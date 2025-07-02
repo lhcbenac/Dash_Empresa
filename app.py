@@ -56,7 +56,7 @@ if uploaded_file:
             ).reset_index()
 
             st.markdown(f"### Summary for Chave: `{selected_chave}`")
-            st.dataframe(pivot_df, use_container_width=True)
+            st.dataframe(pivot_df.round(2), use_container_width=True)
 
             # Download button
             csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
