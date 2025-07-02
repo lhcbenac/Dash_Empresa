@@ -46,7 +46,7 @@ if page == "Upload":
                 
                 # Show sample data
                 st.markdown("### 👀 Sample Data")
-                st.dataframe(df_taurus.head(), use_container_width=True)
+                st.dataframe(df_taurus.head(), use_container_width=True , height=460)
                 
         except ValueError as e:
             if "Worksheet named 'Taurus' not found" in str(e):
@@ -106,7 +106,7 @@ elif page == "Macro View":
         summary_with_totals = pd.concat([summary_df, totals_row], ignore_index=True)
         
         # Display the table
-        st.dataframe(summary_with_totals.round(2), use_container_width=True)
+        st.dataframe(summary_with_totals.round(2), use_container_width=True ,height=460)
         
         # Export CSV
         csv = summary_with_totals.round(2).to_csv(index=False).encode("utf-8")
@@ -176,7 +176,7 @@ elif page == "Assessor View":
         category_with_totals = pd.concat([category_summary, totals_row], ignore_index=True)
         
         # Display the table
-        st.dataframe(category_with_totals.round(2), use_container_width=True)
+        st.dataframe(category_with_totals.round(2), use_container_width=True , height=460)
         
         # Export CSV
         csv = category_with_totals.round(2).to_csv(index=False).encode("utf-8")
@@ -237,7 +237,7 @@ elif page == "Profit":
     
     # Show summary table
     st.markdown("### 📊 Summary Table")
-    st.dataframe(profit_summary.round(2), use_container_width=True)
+    st.dataframe(profit_summary.round(2), use_container_width=True , height=460)
     
     # Download button
     csv = profit_summary.to_csv(index=False).encode("utf-8")
