@@ -86,8 +86,18 @@ elif page == "Macro View":
 
         st.dataframe(pivot_df.round(2), use_container_width=True)
 
+        # Export summarized pivot table CSV
         csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download CSV", csv, "Pix_Summary_Selected_Chaves.csv", "text/csv")
+
+        # Export full filtered raw data CSV
+        csv_all = df_filtered.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📦 Download Full Data (Raw Rows)",
+            data=csv_all,
+            file_name="FullData_Selected_Chaves.csv",
+            mime="text/csv"
+        )
     else:
         st.warning("Please select at least one Chave.")
 
@@ -122,5 +132,15 @@ elif page == "Assessor View":
         st.markdown(f"### Summary for AssessorReal: `{selected_assessor}`")
         st.dataframe(pivot_df.round(2), use_container_width=True)
 
+        # Export summarized pivot table CSV
         csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download CSV", csv, f"{selected_assessor}_Summary.csv", "text/csv")
+
+        # Export full filtered raw data CSV
+        csv_all = df_filtered.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📦 Download Full Data (Raw Rows)",
+            data=csv_all,
+            file_name=f"{selected_assessor}_FullData.csv",
+            mime="text/csv"
+        )
