@@ -1,6 +1,3 @@
 streamlit
 pandas
 openpyxl
-git add requirements.txt
-git commit -m "Add openpyxl to fix Excel import error"
-git push origin main  # or your branch name
