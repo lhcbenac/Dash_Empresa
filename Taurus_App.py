@@ -23,12 +23,12 @@ if page == "Upload":
             df_taurus = pd.read_excel(uploaded_file, sheet_name="Taurus", engine="openpyxl")
             
             # Check if required columns exist
-            required_cols = {"Chave", "AssessorReal", "Categoria", "Comissão", "Tributo Retido", "Pix_Assessor", "Lucro_Empresa"}
+            required_cols = {"Chave", "AssessorReal", "Categoria", "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"}
             
             if not required_cols.issubset(df_taurus.columns):
                 missing_cols = required_cols - set(df_taurus.columns)
                 st.error(f"❌ Missing required columns: {', '.join(missing_cols)}")
-                st.info("Required columns: Chave, AssessorReal, Categoria, Comissão, Tributo Retido, Pix_Assessor, Lucro_Empresa")
+                st.info("Required columns: Chave, AssessorReal, Categoria, Comissão, Tributo_Retido, Pix_Assessor, Lucro_Empresa")
             else:
                 # Store data in session state
                 st.session_state["df_taurus"] = df_taurus
@@ -82,7 +82,7 @@ elif page == "Macro View":
         st.markdown(f"### Summary for Chave(s): `{', '.join(map(str, selected_chaves))}`")
         
         # Create pivot table with AssessorReal as rows and sum of financial columns
-        financial_cols = ["Comissão", "Tributo Retido", "Pix_Assessor", "Lucro_Empresa"]
+        financial_cols = ["Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
         
         # Group by AssessorReal and sum the financial columns
         summary_df = (
@@ -98,7 +98,7 @@ elif page == "Macro View":
         totals_row = pd.DataFrame({
             "AssessorReal": ["TOTAL"],
             "Comissão": [summary_df["Comissão"].sum()],
-            "Tributo Retido": [summary_df["Tributo Retido"].sum()],
+            "Tributo_Retido": [summary_df["Tributo_Retido"].sum()],
             "Pix_Assessor": [summary_df["Pix_Assessor"].sum()],
             "Lucro_Empresa": [summary_df["Lucro_Empresa"].sum()]
         })
@@ -139,7 +139,7 @@ elif page == "Assessor View":
         st.markdown(f"### Summary for AssessorReal: `{selected_assessor}`")
         
         # Financial columns to sum
-        financial_cols = ["Comissão", "Tributo Retido", "Pix_Assessor", "Lucro_Empresa"]
+        financial_cols = ["Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
         
         # Group by Categoria and sum financial columns
         category_summary = (
@@ -152,7 +152,7 @@ elif page == "Assessor View":
         totals_row = pd.DataFrame({
             "Categoria": ["TOTAL"],
             "Comissão": [category_summary["Comissão"].sum()],
-            "Tributo Retido": [category_summary["Tributo Retido"].sum()],
+            "Tributo_Retido": [category_summary["Tributo_Retido"].sum()],
             "Pix_Assessor": [category_summary["Pix_Assessor"].sum()],
             "Lucro_Empresa": [category_summary["Lucro_Empresa"].sum()]
         })
