@@ -126,24 +126,40 @@ elif page == "Assessor View":
     
     df_taurus = st.session_state["df_taurus"]
     
+    # Chave filter
+    st.markdown("### 🔍 Filter by Chave")
+    chave_list = sorted(df_taurus["Chave"].dropna().unique())
+    selected_chaves = st.multiselect(
+        "Select Chave period(s)",
+        chave_list,
+        default=chave_list
+    )
+    
     # Assessor selection
     assessor_list = sorted(df_taurus["AssessorReal"].dropna().unique())
     selected_assessor = st.selectbox("Select AssessorReal", assessor_list)
     
-    # Filter data by selected assessor
-    df_filtered = df_taurus[df_taurus["AssessorReal"] == selected_assessor]
+    # Filter data by selected assessor and Chave
+    df_filtered = df_taurus[
+        (df_taurus["AssessorReal"] == selected_assessor) &
+        (df_taurus["Chave"].isin(selected_chaves))
+    ]
     
     if df_filtered.empty:
-        st.warning("No data for selected AssessorReal.")
+        st.warning("No data for the selected AssessorReal & Chave combination.")
     else:
-        st.markdown(f"### Summary for AssessorReal: `{selected_assessor}`")
+        st.markdown(
+            f"### Summary for `{selected_assessor}` "
+            f"(Chave: {', '.join(map(str, selected_chaves))})"
+        )
         
         # Financial columns to sum
         financial_cols = ["Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
         
         # Group by Categoria and sum financial columns
         category_summary = (
-            df_filtered.groupby("Categoria")[financial_cols]
+            df_filtered
+            .groupby("Categoria")[financial_cols]
             .sum()
             .reset_index()
         )
@@ -164,7 +180,12 @@ elif page == "Assessor View":
         
         # Export CSV
         csv = category_with_totals.round(2).to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Download CSV", csv, f"{selected_assessor}_Category_Summary.csv", "text/csv")
+        st.download_button(
+            "📥 Download CSV",
+            csv,
+            f"{selected_assessor}_Category_Summary_{'_'.join(map(str, selected_chaves))}.csv",
+            "text/csv"
+        )
 
 # --- PROFIT PAGE ---
 elif page == "Profit":
