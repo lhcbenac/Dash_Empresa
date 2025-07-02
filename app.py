@@ -10,11 +10,15 @@ if "df_all" not in st.session_state:
     st.session_state["df_all"] = None
 if "skipped_sheets" not in st.session_state:
     st.session_state["skipped_sheets"] = []
+if "uploaded_file_data" not in st.session_state:
+    st.session_state["uploaded_file_data"] = None
 # --- UPLOAD PAGE ---
 if page == "Upload":
     st.title("📤 Upload Excel File")
     uploaded_file = st.file_uploader("Upload the 'Utor_Detalhado.xlsx' file", type=["xlsx"])
     if uploaded_file:
+        # Store the uploaded file data in session state
+        st.session_state["uploaded_file_data"] = uploaded_file
         try:
             xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
             all_sheets = xls.sheet_names
@@ -120,73 +124,80 @@ elif page == "Assessor View":
 # --- PROFIT PAGE ---
 elif page == "Profit":
     st.title("💰 Profit Summary (Lucro_Utor)")
-    uploaded_file = st.file_uploader("Optional: Re-upload to include Lucro_Utor from all sheets", type=["xlsx"], key="profit_upload")
-    if uploaded_file:
-        try:
-            xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
-            all_sheets = xls.sheet_names
-            lucro_data = []
-            for sheet in all_sheets:
-                try:
-                    df = pd.read_excel(xls, sheet_name=sheet)
-                    if {"Chave", "Lucro_Utor"}.issubset(df.columns):
-                        temp = df[["Chave", "Lucro_Utor"]].copy()
-                        temp["Distribuidor"] = sheet
-                        lucro_data.append(temp)
-                except:
-                    continue
-            if not lucro_data:
-                st.error("❌ No sheets contained both 'Chave' and 'Lucro_Utor' columns.")
+    
+    # Check if data was already uploaded
+    if st.session_state["df_all"] is None or st.session_state["uploaded_file_data"] is None:
+        st.warning("Please upload the Excel file in the Upload section first.")
+        st.stop()
+    
+    st.success("✅ Using previously uploaded file for Lucro_Utor analysis")
+    
+    # Use the stored uploaded file
+    uploaded_file = st.session_state["uploaded_file_data"]
+    
+    try:
+        xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
+        all_sheets = xls.sheet_names
+        lucro_data = []
+        for sheet in all_sheets:
+            try:
+                df = pd.read_excel(xls, sheet_name=sheet)
+                if {"Chave", "Lucro_Utor"}.issubset(df.columns):
+                    temp = df[["Chave", "Lucro_Utor"]].copy()
+                    temp["Distribuidor"] = sheet
+                    lucro_data.append(temp)
+            except:
+                continue
+        if not lucro_data:
+            st.error("❌ No sheets contained both 'Chave' and 'Lucro_Utor' columns.")
+        else:
+            df_lucro = pd.concat(lucro_data, ignore_index=True)
+            
+            # --- NEW: CHAVE FILTER ---
+            st.markdown("### 🔍 Filter Options")
+            chave_list = sorted(df_lucro["Chave"].dropna().unique())
+            selected_chaves = st.multiselect(
+                "Select Chave periods to include (leave empty for all)",
+                chave_list,
+                default=chave_list  # Default to all selected
+            )
+            
+            # Filter data based on selection
+            if selected_chaves:
+                df_lucro_filtered = df_lucro[df_lucro["Chave"].isin(selected_chaves)]
             else:
-                df_lucro = pd.concat(lucro_data, ignore_index=True)
-                
-                # --- NEW: CHAVE FILTER ---
-                st.markdown("### 🔍 Filter Options")
-                chave_list = sorted(df_lucro["Chave"].dropna().unique())
-                selected_chaves = st.multiselect(
-                    "Select Chave periods to include (leave empty for all)",
-                    chave_list,
-                    default=chave_list  # Default to all selected
-                )
-                
-                # Filter data based on selection
-                if selected_chaves:
-                    df_lucro_filtered = df_lucro[df_lucro["Chave"].isin(selected_chaves)]
-                else:
-                    df_lucro_filtered = df_lucro
-                
-                lucro_summary = (
-                    df_lucro_filtered.groupby("Chave")["Lucro_Utor"]
-                    .sum()
-                    .reset_index()
-                    .sort_values("Chave")
-                )
-                
-                # --- NEW: CALCULATE TOTAL SUM ---
-                total_sum = lucro_summary["Lucro_Utor"].sum()
-                
-                st.markdown("### 📈 Total Lucro_Utor by Chave")
-                
-                # --- NEW: DISPLAY TOTAL SUM LABEL ---
-                st.metric(
-                    label="💰 Total Sum of All Values",
-                    value=f"{total_sum:,.2f}",
-                    help="Sum of all Lucro_Utor values in the chart below"
-                )
-                
-                # Display chart
-                st.bar_chart(lucro_summary.set_index("Chave"))
-                
-                # Show summary table
-                st.markdown("### 📊 Summary Table")
-                st.dataframe(lucro_summary.round(2), use_container_width=True)
-                
-                # Download button
-                csv = lucro_summary.to_csv(index=False).encode("utf-8")
-                filename = f"Lucro_Utor_by_Chave_{'_'.join(map(str, selected_chaves)) if selected_chaves else 'All'}.csv"
-                st.download_button("📥 Download Profit CSV", csv, filename, "text/csv")
-                
-        except Exception as e:
-            st.error(f"❌ Error processing file: {e}")
-    else:
-        st.info("Upload the same Excel file or another one to analyze 'Lucro_Utor'.")
+                df_lucro_filtered = df_lucro
+            
+            lucro_summary = (
+                df_lucro_filtered.groupby("Chave")["Lucro_Utor"]
+                .sum()
+                .reset_index()
+                .sort_values("Chave")
+            )
+            
+            # --- NEW: CALCULATE TOTAL SUM ---
+            total_sum = lucro_summary["Lucro_Utor"].sum()
+            
+            st.markdown("### 📈 Total Lucro_Utor by Chave")
+            
+            # --- NEW: DISPLAY TOTAL SUM LABEL ---
+            st.metric(
+                label="💰 Total Sum of All Values",
+                value=f"{total_sum:,.2f}",
+                help="Sum of all Lucro_Utor values in the chart below"
+            )
+            
+            # Display chart
+            st.bar_chart(lucro_summary.set_index("Chave"))
+            
+            # Show summary table
+            st.markdown("### 📊 Summary Table")
+            st.dataframe(lucro_summary.round(2), use_container_width=True)
+            
+            # Download button
+            csv = lucro_summary.to_csv(index=False).encode("utf-8")
+            filename = f"Lucro_Utor_by_Chave_{'_'.join(map(str, selected_chaves)) if selected_chaves else 'All'}.csv"
+            st.download_button("📥 Download Profit CSV", csv, filename, "text/csv")
+            
+    except Exception as e:
+        st.error(f"❌ Error processing file: {e}")
