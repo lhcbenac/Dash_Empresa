@@ -59,7 +59,7 @@ if uploaded_file:
             st.dataframe(pivot_df, use_container_width=True)
 
             # Download button
-            csv = pivot_df.to_csv(index=False).encode("utf-8")
+            csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
             st.download_button(
                 label="📥 Download CSV",
                 data=csv,
