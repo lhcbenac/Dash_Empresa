@@ -71,7 +71,7 @@ elif page == "Macro View":
             margins=True,
             margins_name="Total"
         ).reset_index()
-        st.dataframe(pivot_df.round(2), use_container_width=True, height=460)
+        st.dataframe(pivot_df.round(2), use_container_width=True)
         # Export summarized pivot table CSV
         csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download CSV", csv, "Pix_Summary_Selected_Chaves.csv", "text/csv")
@@ -109,7 +109,7 @@ elif page == "Assessor View":
             margins_name="Total"
         ).reset_index()
         st.markdown(f"### Summary for AssessorReal: `{selected_assessor}`")
-        st.dataframe(pivot_df.round(2), use_container_width=True , height=460)
+        st.dataframe(pivot_df.round(2), use_container_width=True)
         # Export summarized pivot table CSV
         csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download CSV", csv, f"{selected_assessor}_Summary.csv", "text/csv")
@@ -180,7 +180,7 @@ elif page == "Profit":
             st.bar_chart(lucro_summary.set_index("Chave"))
 
             st.markdown("### 📊 Summary Table")
-            st.dataframe(lucro_summary.round(2), use_container_width=True , height=460)
+            st.dataframe(lucro_summary.round(2), use_container_width=True)
 
             csv = lucro_summary.to_csv(index=False).encode("utf-8")
             filename = f"Lucro_Empresa_by_Chave_{'_'.join(map(str, selected_chaves)) if selected_chaves else 'All'}.csv"
