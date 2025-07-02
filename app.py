@@ -37,11 +37,13 @@ if uploaded_file:
         else:
             df_all = pd.concat(data, ignore_index=True)
 
-            # Chave filter
+            # Multi-select Chave filter (Time Slicer)
             chave_list = sorted(df_all["Chave"].dropna().unique())
-            selected_chave = st.selectbox("Select a Chave", chave_list)
+            selected_chaves = st.multiselect("Select one or more Chave periods", chave_list, default=chave_list[:1])
+            
+            # Filter data by selected Chaves
+            df_filtered = df_all[df_all["Chave"].isin(selected_chaves)]
 
-            df_filtered = df_all[df_all["Chave"] == selected_chave]
 
             # Pivot table
             pivot_df = pd.pivot_table(
