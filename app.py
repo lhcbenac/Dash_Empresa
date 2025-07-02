@@ -33,41 +33,46 @@ if uploaded_file:
 
         # Check if any valid data was found
         if not data:
-            st.error("No valid sheets found. Please check that all distributor sheets contain 'Chave', 'AssessorReal', and 'Pix_Assessor'.")
+            st.error("❌ No valid sheets found. Please check that all distributor sheets contain 'Chave', 'AssessorReal', and 'Pix_Assessor'.")
         else:
             df_all = pd.concat(data, ignore_index=True)
 
             # Multi-select Chave filter (Time Slicer)
             chave_list = sorted(df_all["Chave"].dropna().unique())
             selected_chaves = st.multiselect("Select one or more Chave periods", chave_list, default=chave_list[:1])
-            
-            # Filter data by selected Chaves
-            df_filtered = df_all[df_all["Chave"].isin(selected_chaves)]
 
+            if selected_chaves:
+                # Filter data by selected Chaves
+                df_filtered = df_all[df_all["Chave"].isin(selected_chaves)]
 
-            # Pivot table
-            pivot_df = pd.pivot_table(
-                df_filtered,
-                index="AssessorReal",
-                columns="Distribuidor",
-                values="Pix_Assessor",
-                aggfunc="sum",
-                fill_value=0,
-                margins=True,
-                margins_name="Total"
-            ).reset_index()
+                # Dashboard title
+                st.markdown(f"### Summary for Chave(s): `{', '.join(map(str, selected_chaves))}`")
 
-            st.markdown(f"### Summary for Chave: `{selected_chave}`")
-            st.dataframe(pivot_df.round(2), use_container_width=True)
+                # Pivot table
+                pivot_df = pd.pivot_table(
+                    df_filtered,
+                    index="AssessorReal",
+                    columns="Distribuidor",
+                    values="Pix_Assessor",
+                    aggfunc="sum",
+                    fill_value=0,
+                    margins=True,
+                    margins_name="Total"
+                ).reset_index()
 
-            # Download button
-            csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=f"Pix_Summary_{selected_chave}.csv",
-                mime="text/csv"
-            )
+                # Display results
+                st.dataframe(pivot_df.round(2), use_container_width=True)
+
+                # Download button with rounded values
+                csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    label="📥 Download CSV",
+                    data=csv,
+                    file_name="Pix_Summary_Selected_Chaves.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.warning("Please select at least one Chave to see results.")
 
             # Show skipped sheets (if any)
             if skipped_sheets:
