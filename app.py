@@ -6,7 +6,7 @@ st.set_page_config(page_title="Pix Assessor Dashboard", layout="wide")
 
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.title("📂 Navigation")
-page = st.sidebar.radio("Go to", ["Upload", "Macro View", "Assessor View"])
+page = st.sidebar.radio("Go to", ["Upload", "Macro View", "Assessor View", "Profit"])
 
 # --- SESSION STORAGE ---
 if "df_all" not in st.session_state:
@@ -144,3 +144,46 @@ elif page == "Assessor View":
             file_name=f"{selected_assessor}_FullData.csv",
             mime="text/csv"
         )
+
+# --- PROFIT PAGE ---
+elif page == "Profit":
+    st.title("💰 Profit Summary (Lucro_Utor)")
+
+    uploaded_file = st.file_uploader("Optional: Re-upload to include Lucro_Utor from all sheets", type=["xlsx"], key="profit_upload")
+
+    if uploaded_file:
+        try:
+            xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
+            all_sheets = xls.sheet_names
+
+            lucro_data = []
+            for sheet in all_sheets:
+                try:
+                    df = pd.read_excel(xls, sheet_name=sheet)
+                    if {"Chave", "Lucro_Utor"}.issubset(df.columns):
+                        temp = df[["Chave", "Lucro_Utor"]].copy()
+                        temp["Distribuidor"] = sheet
+                        lucro_data.append(temp)
+                except:
+                    continue
+
+            if not lucro_data:
+                st.error("❌ No sheets contained both 'Chave' and 'Lucro_Utor' columns.")
+            else:
+                df_lucro = pd.concat(lucro_data, ignore_index=True)
+                lucro_summary = (
+                    df_lucro.groupby("Chave")["Lucro_Utor"]
+                    .sum()
+                    .reset_index()
+                    .sort_values("Chave")
+                )
+
+                st.markdown("### 📈 Total Lucro_Utor by Chave")
+                st.bar_chart(lucro_summary.set_index("Chave"))
+
+                csv = lucro_summary.to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Download Profit CSV", csv, "Lucro_Utor_by_Chave.csv", "text/csv")
+        except Exception as e:
+            st.error(f"❌ Error processing file: {e}")
+    else:
+        st.info("Upload the same Excel file or another one to analyze 'Lucro_Utor'.")
