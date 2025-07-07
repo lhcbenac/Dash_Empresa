@@ -293,3 +293,687 @@ elif page == "Profit":
     csv = profit_summary.to_csv(index=False).encode("utf-8")
     filename = f"Profit_by_Chave_{'_'.join(map(str, selected_chaves)) if selected_chaves else 'All'}.csv"
     st.download_button("📥 Download Profit CSV", csv, filename, "text/csv")
+# --- PERFORMANCE ANALYTICS ---
+elif page == "📈 Performance Analytics":
+    st.markdown('<h1 class="main-header">📈 Advanced Performance Analytics</h1>', unsafe_allow_html=True)
+    
+    if st.session_state["df_taurus"] is None:
+        st.warning("Please upload the Excel file first.")
+        st.stop()
+    
+    df = st.session_state["df_taurus"]
+    
+    # Analytics options
+    analysis_type = st.selectbox(
+        "📊 Select Analysis Type",
+        ["Trend Analysis", "Comparative Analysis", "Seasonal Analysis", "Growth Analysis"]
+    )
+    
+    if analysis_type == "Trend Analysis":
+        st.markdown("### 📈 Revenue and Profit Trends")
+        
+        # Time series analysis
+        monthly_data = df.groupby('Chave').agg({
+            'Comissão': 'sum',
+            'Lucro_Empresa': 'sum',
+            'Pix_Assessor': 'sum',
+            'AssessorReal': 'nunique'
+        }).reset_index()
+        
+        monthly_data['Chave_Date'] = monthly_data['Chave'].apply(parse_chave_to_date)
+        monthly_data = monthly_data.sort_values('Chave_Date')
+        
+        # Create subplot
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=('Revenue Trend', 'Profit Trend', 'Pix Assessor', 'Active Assessors'),
+            specs=[[{"secondary_y": False}, {"secondary_y": False}],
+                   [{"secondary_y": False}, {"secondary_y": False}]]
+        )
+        
+        # Revenue trend
+        fig.add_trace(
+            go.Scatter(x=monthly_data['Chave'], y=monthly_data['Comissão'], 
+                      mode='lines+markers', name='Revenue'),
+            row=1, col=1
+        )
+        
+        # Profit trend
+        fig.add_trace(
+            go.Scatter(x=monthly_data['Chave'], y=monthly_data['Lucro_Empresa'], 
+                      mode='lines+markers', name='Profit', line=dict(color='green')),
+            row=1, col=2
+        )
+        
+        # Pix trend
+        fig.add_trace(
+            go.Scatter(x=monthly_data['Chave'], y=monthly_data['Pix_Assessor'], 
+                      mode='lines+markers', name='Pix', line=dict(color='orange')),
+            row=2, col=1
+        )
+        
+        # Active assessors
+        fig.add_trace(
+            go.Scatter(x=monthly_data['Chave'], y=monthly_data['AssessorReal'], 
+                      mode='lines+markers', name='Assessors', line=dict(color='purple')),
+            row=2, col=2
+        )
+        
+        fig.update_layout(height=600, title_text="📊 Comprehensive Trend Analysis")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    elif analysis_type == "Comparative Analysis":
+        st.markdown("### 🔍 Assessor Comparison")
+        
+        # Top assessors selector
+        top_n = st.slider("Select top N assessors", 3, 20, 10)
+        
+        top_assessors = df.groupby('AssessorReal')['Comissão'].sum().nlargest(top_n).index
+        df_top = df[df['AssessorReal'].isin(top_assessors)]
+        
+        # Comparison metrics
+        comparison_data = df_top.groupby('AssessorReal').agg({
+            'Comissão': 'sum',
+            'Lucro_Empresa': 'sum',
+            'Pix_Assessor': 'sum',
+            'Chave': 'count'
+        }).rename(columns={'Chave': 'Transaction_Count'})
+        
+        comparison_data['Avg_Transaction'] = comparison_data['Comissão'] / comparison_data['Transaction_Count']
+        comparison_data['Profit_Margin'] = (comparison_data['Lucro_Empresa'] / comparison_data['Comissão']) * 100
+        
+        # Radar chart
+        fig_radar = go.Figure()
+        
+        for assessor in top_assessors[:5]:  # Show top 5 in radar
+            assessor_data = comparison_data.loc[assessor]
+            
+            # Normalize values for radar chart
+            metrics = ['Comissão', 'Lucro_Empresa', 'Pix_Assessor', 'Avg_Transaction', 'Profit_Margin']
+            normalized_values = []
+            
+            for metric in metrics:
+                max_val = comparison_data[metric].max()
+                normalized_values.append((assessor_data[metric] / max_val) * 100)
+            
+            fig_radar.add_trace(go.Scatterpolar(
+                r=normalized_values,
+                theta=metrics,
+                fill='toself',
+                name=assessor
+            ))
+        
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, 100]
+                )),
+            showlegend=True,
+            title="🎯 Top 5 Assessors Performance Comparison"
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+    
+    elif analysis_type == "Seasonal Analysis":
+        st.markdown("### 🌊 Seasonal Performance Analysis")
+        
+        # Extract month from Chave
+        df['Month'] = df['Chave'].str[:2].astype(int)
+        df['Month_Name'] = df['Month'].apply(lambda x: calendar.month_name[x])
+        
+        # Monthly aggregation
+        seasonal_data = df.groupby('Month_Name').agg({
+            'Comissão': 'sum',
+            'Lucro_Empresa': 'sum',
+            'AssessorReal': 'nunique'
+        }).reset_index()
+        
+        # Reorder by month
+        month_order = [calendar.month_name[i] for i in range(1, 13)]
+        seasonal_data['Month_Name'] = pd.Categorical(seasonal_data['Month_Name'], categories=month_order, ordered=True)
+        seasonal_data = seasonal_data.sort_values('Month_Name')
+        
+        # Seasonal charts
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            fig_seasonal = px.bar(
+                seasonal_data,
+                x='Month_Name',
+                y='Comissão',
+                title='📊 Revenue by Month',
+                color='Comissão',
+                color_continuous_scale='viridis'
+            )
+            fig_seasonal.update_xaxes(tickangle=45)
+            st.plotly_chart(fig_seasonal, use_container_width=True)
+        
+        with col2:
+            fig_profit = px.line(
+                seasonal_data,
+                x='Month_Name',
+                y='Lucro_Empresa',
+                title='📈 Profit by Month',
+                markers=True
+            )
+            fig_profit.update_xaxes(tickangle=45)
+            st.plotly_chart(fig_profit, use_container_width=True)
+    
+    elif analysis_type == "Growth Analysis":
+        st.markdown("### 📊 Growth Rate Analysis")
+        
+        # Period-over-period growth
+        monthly_data = df.groupby('Chave').agg({
+            'Comissão': 'sum',
+            'Lucro_Empresa': 'sum',
+            'AssessorReal': 'nunique'
+        }).reset_index()
+        
+        monthly_data['Chave_Date'] = monthly_data['Chave'].apply(parse_chave_to_date)
+        monthly_data = monthly_data.sort_values('Chave_Date')
+        
+        # Calculate growth rates
+        monthly_data['Revenue_Growth'] = monthly_data['Comissão'].pct_change() * 100
+        monthly_data['Profit_Growth'] = monthly_data['Lucro_Empresa'].pct_change() * 100
+        monthly_data['Assessor_Growth'] = monthly_data['AssessorReal'].pct_change() * 100
+        
+        # Growth visualization
+        fig_growth = go.Figure()
+        
+        fig_growth.add_trace(go.Scatter(
+            x=monthly_data['Chave'],
+            y=monthly_data['Revenue_Growth'],
+            mode='lines+markers',
+            name='Revenue Growth %',
+            line=dict(color='blue')
+        ))
+        
+        fig_growth.add_trace(go.Scatter(
+            x=monthly_data['Chave'],
+            y=monthly_data['Profit_Growth'],
+            mode='lines+markers',
+            name='Profit Growth %',
+            line=dict(color='green')
+        ))
+        
+        fig_growth.add_trace(go.Scatter(
+            x=monthly_data['Chave'],
+            y=monthly_data['Assessor_Growth'],
+            mode='lines+markers',
+            name='Assessor Growth %',
+            line=dict(color='orange')
+        ))
+        
+        fig_growth.update_layout(
+            title='📈 Month-over-Month Growth Rates',
+            xaxis_title='Period',
+            yaxis_title='Growth Rate (%)',
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig_growth, use_container_width=True)
+        
+        # Growth statistics
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            avg_revenue_growth = monthly_data['Revenue_Growth'].mean()
+            st.metric("Avg Revenue Growth", f"{avg_revenue_growth:.1f}%")
+        
+        with col2:
+            avg_profit_growth = monthly_data['Profit_Growth'].mean()
+            st.metric("Avg Profit Growth", f"{avg_profit_growth:.1f}%")
+        
+        with col3:
+            avg_assessor_growth = monthly_data['Assessor_Growth'].mean()
+            st.metric("Avg Assessor Growth", f"{avg_assessor_growth:.1f}%")
+
+# --- GOAL TRACKING ---
+elif page == "🎯 Goal Tracking":
+    st.markdown('<h1 class="main-header">🎯 Goal Tracking & Targets</h1>', unsafe_allow_html=True)
+    
+    if st.session_state["df_taurus"] is None:
+        st.warning("Please upload the Excel file first.")
+        st.stop()
+    
+    df = st.session_state["df_taurus"]
+    
+    # Goal setting
+    st.sidebar.markdown("### 🎯 Set Goals")
+    monthly_revenue_goal = st.sidebar.number_input("Monthly Revenue Goal (R$)", value=1000000.0, step=50000.0)
+    monthly_profit_goal = st.sidebar.number_input("Monthly Profit Goal (R$)", value=200000.0, step=10000.0)
+    assessor_count_goal = st.sidebar.number_input("Active Assessors Goal", value=50, step=5)
+    
+    # Current period selection
+    current_period = st.sidebar.selectbox(
+        "Select Current Period",
+        sorted(df["Chave"].unique(), reverse=True)
+    )
+    
+    # Calculate current metrics
+    current_data = df[df["Chave"] == current_period]
+    
+    if not current_data.empty:
+        current_revenue = current_data["Comissão"].sum()
+        current_profit = current_data["Lucro_Empresa"].sum()
+        current_assessors = current_data["AssessorReal"].nunique()
+        
+        # Goal achievement percentages
+        revenue_achievement = (current_revenue / monthly_revenue_goal) * 100
+        profit_achievement = (current_profit / monthly_profit_goal) * 100
+        assessor_achievement = (current_assessors / assessor_count_goal) * 100
+        
+        # Goal tracking dashboard
+        st.markdown("### 📊 Goal Achievement Dashboard")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            fig_revenue_gauge = create_gauge_chart(
+                revenue_achievement,
+                "Revenue Achievement %",
+                max_val=150
+            )
+            st.plotly_chart(fig_revenue_gauge, use_container_width=True)
+            st.metric(
+                "Revenue vs Goal",
+                format_currency(current_revenue),
+                f"{revenue_achievement:.1f}% of goal"
+            )
+        
+        with col2:
+            fig_profit_gauge = create_gauge_chart(
+                profit_achievement,
+                "Profit Achievement %",
+                max_val=150
+            )
+            st.plotly_chart(fig_profit_gauge, use_container_width=True)
+            st.metric(
+                "Profit vs Goal",
+                format_currency(current_profit),
+                f"{profit_achievement:.1f}% of goal"
+            )
+        
+        with col3:
+            fig_assessor_gauge = create_gauge_chart(
+                assessor_achievement,
+                "Assessor Count Achievement %",
+                max_val=150
+            )
+            st.plotly_chart(fig_assessor_gauge, use_container_width=True)
+            st.metric(
+                "Assessors vs Goal",
+                current_assessors,
+                f"{assessor_achievement:.1f}% of goal"
+            )
+        
+        # Historical goal tracking
+        st.markdown("### 📈 Historical Goal Performance")
+        
+        # Calculate historical achievements
+        historical_data = df.groupby('Chave').agg({
+            'Comissão': 'sum',
+            'Lucro_Empresa': 'sum',
+            'AssessorReal': 'nunique'
+        }).reset_index()
+        
+        historical_data['Revenue_Achievement'] = (historical_data['Comissão'] / monthly_revenue_goal) * 100
+        historical_data['Profit_Achievement'] = (historical_data['Lucro_Empresa'] / monthly_profit_goal) * 100
+        historical_data['Assessor_Achievement'] = (historical_data['AssessorReal'] / assessor_count_goal) * 100
+        
+        # Sort by period
+        historical_data['Chave_Date'] = historical_data['Chave'].apply(parse_chave_to_date)
+        historical_data = historical_data.sort_values('Chave_Date')
+        
+        # Goal achievement chart
+        fig_goals = go.Figure()
+        
+        fig_goals.add_trace(go.Scatter(
+            x=historical_data['Chave'],
+            y=historical_data['Revenue_Achievement'],
+            mode='lines+markers',
+            name='Revenue Achievement %',
+            line=dict(color='blue')
+        ))
+        
+        fig_goals.add_trace(go.Scatter(
+            x=historical_data['Chave'],
+            y=historical_data['Profit_Achievement'],
+            mode='lines+markers',
+            name='Profit Achievement %',
+            line=dict(color='green')
+        ))
+        
+        fig_goals.add_trace(go.Scatter(
+            x=historical_data['Chave'],
+            y=historical_data['Assessor_Achievement'],
+            mode='lines+markers',
+            name='Assessor Achievement %',
+            line=dict(color='orange')
+        ))
+        
+        # Add goal line
+        fig_goals.add_hline(y=100, line_dash="dash", line_color="red", annotation_text="Goal (100%)")
+        
+        fig_goals.update_layout(
+            title='🎯 Goal Achievement Over Time',
+            xaxis_title='Period',
+            yaxis_title='Achievement (%)',
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig_goals, use_container_width=True)
+
+# --- PROFIT CENTER ---
+elif page == "💰 Profit Center":
+    st.markdown('<h1 class="main-header">💰 Profit Center Analysis</h1>', unsafe_allow_html=True)
+    
+    if st.session_state["df_taurus"] is None:
+        st.warning("Please upload the Excel file first.")
+        st.stop()
+    
+    df = st.session_state["df_taurus"]
+    
+    # Profit analysis tabs
+    tab1, tab2, tab3 = st.tabs(["📊 Profit Overview", "🎯 Profit by Category", "👤 Assessor Profitability"])
+    
+    with tab1:
+        st.markdown("### 💰 Overall Profit Analysis")
+        
+        # Key profit metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        total_revenue = df["Comissão"].sum()
+        total_profit = df["Lucro_Empresa"].sum()
+        total_pix = df["Pix_Assessor"].sum()
+        profit_margin = (total_profit / total_revenue) * 100 if total_revenue > 0 else 0
+        
+        with col1:
+            st.metric("Total Revenue", format_currency(total_revenue))
+        with col2:
+            st.metric("Total Profit", format_currency(total_profit))
+        with col3:
+            st.metric("Total Pix Assessor", format_currency(total_pix))
+        with col4:
+            st.metric("Profit Margin", f"{profit_margin:.2f}%")
+        
+        # Profit evolution
+        monthly_profit = df.groupby('Chave').agg({
+            'Comissão': 'sum',
+            'Lucro_Empresa': 'sum',
+            'Pix_Assessor': 'sum'
+        }).reset_index()
+        
+        monthly_profit['Profit_Margin'] = (monthly_profit['Lucro_Empresa'] / monthly_profit['Comissão']) * 100
+        monthly_profit['Chave_Date'] = monthly_profit['Chave'].apply(parse_chave_to_date)
+        monthly_profit = monthly_profit.sort_values('Chave_Date')
+        
+        # Profit waterfall chart
+        fig_waterfall = go.Figure()
+        
+        fig_waterfall.add_trace(go.Bar(
+            x=monthly_profit['Chave'],
+            y=monthly_profit['Comissão'],
+            name='Revenue',
+            marker_color='lightblue'
+        ))
+        
+        fig_waterfall.add_trace(go.Bar(
+            x=monthly_profit['Chave'],
+            y=monthly_profit['Lucro_Empresa'],
+            name='Profit',
+            marker_color='green'
+        ))
+        
+        fig_waterfall.add_trace(go.Bar(
+            x=monthly_profit['Chave'],
+            y=monthly_profit['Pix_Assessor'],
+            name='Pix Assessor',
+            marker_color='orange'
+        ))
+        
+        fig_waterfall.update_layout(
+            title='💰 Revenue vs Profit vs Pix by Period',
+            xaxis_title='Period',
+            yaxis_title='Amount (R$)',
+            barmode='group'
+        )
+        st.plotly_chart(fig_waterfall, use_container_width=True)
+        
+        # Profit margin trend
+        fig_margin = px.line(
+            monthly_profit,
+            x='Chave',
+            y='Profit_Margin',
+            title='📈 Profit Margin Trend (%)',
+            markers=True,
+            line_shape='spline'
+        )
+        fig_margin.update_yaxes(title_text="Profit Margin (%)")
+        st.plotly_chart(fig_margin, use_container_width=True)
+    
+    with tab2:
+        st.markdown("### 🎯 Profit by Category")
+        
+        # Category profit analysis
+        category_profit = df.groupby('Categoria').agg({
+            'Comissão': 'sum',
+            'Lucro_Empresa': 'sum',
+            'Pix_Assessor': 'sum',
+            'Chave': 'count'
+        }).rename(columns={'Chave': 'Transaction_Count'})
+        
+        category_profit['Profit_Margin'] = (category_profit['Lucro_Empresa'] / category_profit['Comissão']) * 100
+        category_profit['Avg_Profit_per_Transaction'] = category_profit['Lucro_Empresa'] / category_profit['Transaction_Count']
+        
+        # Sort by profit
+        category_profit = category_profit.sort_values('Lucro_Empresa', ascending=False)
+        
+        # Category profitability chart
+        fig_category = px.bar(
+            category_profit.reset_index(),
+            x='Categoria',
+            y='Lucro_Empresa',
+            color='Profit_Margin',
+            title='💰 Profit by Category',
+            color_continuous_scale='RdYlGn'
+        )
+        fig_category.update_xaxes(tickangle=45)
+        st.plotly_chart(fig_category, use_container_width=True)
+        
+        # Category details table
+        st.markdown("### 📋 Category Profitability Details")
+        
+        # Format for display
+        display_category = category_profit.copy()
+        display_category['Comissão'] = display_category['Comissão'].apply(format_currency)
+        display_category['Lucro_Empresa'] = display_category['Lucro_Empresa'].apply(format_currency)
+        display_category['Pix_Assessor'] = display_category['Pix_Assessor'].apply(format_currency)
+        display_category['Avg_Profit_per_Transaction'] = display_category['Avg_Profit_per_Transaction'].apply(format_currency)
+        display_category['Profit_Margin'] = display_category['Profit_Margin'].apply(lambda x: f"{x:.2f}%")
+        
+        st.dataframe(display_category, use_container_width=True)
+    
+    with tab3:
+        st.markdown("### 👤 Assessor Profitability")
+        
+        # Assessor profit analysis
+        assessor_profit = df.groupby('AssessorReal').agg({
+            'Comissão': 'sum',
+            'Lucro_Empresa': 'sum',
+            'Pix_Assessor': 'sum',
+            'Chave': 'count'
+        }).rename(columns={'Chave': 'Transaction_Count'})
+        
+        assessor_profit['Profit_Margin'] = (assessor_profit['Lucro_Empresa'] / assessor_profit['Comissão']) * 100
+        assessor_profit['Profit_per_Transaction'] = assessor_profit['Lucro_Empresa'] / assessor_profit['Transaction_Count']
+        
+        # Filter options
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            min_transactions = st.number_input("Min Transactions", min_value=1, value=10)
+        with col2:
+            top_n_assessors = st.number_input("Show Top N Assessors", min_value=5, max_value=50, value=20)
+        
+        # Filter and sort
+        filtered_assessors = assessor_profit[assessor_profit['Transaction_Count'] >= min_transactions]
+        filtered_assessors = filtered_assessors.sort_values('Lucro_Empresa', ascending=False).head(top_n_assessors)
+        
+        # Profitability scatter plot
+        fig_scatter = px.scatter(
+            filtered_assessors.reset_index(),
+            x='Comissão',
+            y='Lucro_Empresa',
+            size='Transaction_Count',
+            color='Profit_Margin',
+            hover_data=['AssessorReal'],
+            title='💰 Assessor Profitability Analysis',
+            labels={'Comissão': 'Revenue (R$)', 'Lucro_Empresa': 'Profit (R$)'},
+            color_continuous_scale='RdYlGn'
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+        
+        # Top profitable assessors
+        st.markdown("### 🏆 Most Profitable Assessors")
+        
+        # Format for display
+        display_assessors = filtered_assessors.copy()
+        display_assessors['Comissão'] = display_assessors['Comissão'].apply(format_currency)
+        display_assessors['Lucro_Empresa'] = display_assessors['Lucro_Empresa'].apply(format_currency)
+        display_assessors['Pix_Assessor'] = display_assessors['Pix_Assessor'].apply(format_currency)
+        display_assessors['Profit_per_Transaction'] = display_assessors['Profit_per_Transaction'].apply(format_currency)
+        display_assessors['Profit_Margin'] = display_assessors['Profit_Margin'].apply(lambda x: f"{x:.2f}%")
+        
+        st.dataframe(display_assessors, use_container_width=True)
+
+# --- REPORTS ---
+elif page == "📋 Reports":
+    st.markdown('<h1 class="main-header">📋 Reports & Export</h1>', unsafe_allow_html=True)
+    
+    if st.session_state["df_taurus"] is None:
+        st.warning("Please upload the Excel file first.")
+        st.stop()
+    
+    df = st.session_state["df_taurus"]
+    
+    # Report generation options
+    st.markdown("### 📊 Report Generation")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        report_type = st.selectbox(
+            "Select Report Type",
+            ["Executive Summary", "Assessor Performance", "Category Analysis", "Profit Report", "Custom Report"]
+        )
+    
+    with col2:
+        # Date range for report
+        chave_list = sorted(df["Chave"].unique())
+        selected_period = st.multiselect(
+            "Select Reporting Period",
+            chave_list,
+            default=chave_list
+        )
+    
+    if selected_period:
+        df_report = df[df["Chave"].isin(selected_period)]
+        
+        if report_type == "Executive Summary":
+            st.markdown("### 📊 Executive Summary Report")
+            
+            # Summary metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Total Revenue", format_currency(df_report["Comissão"].sum()))
+            with col2:
+                st.metric("Total Profit", format_currency(df_report["Lucro_Empresa"].sum()))
+            with col3:
+                st.metric("Active Assessors", df_report["AssessorReal"].nunique())
+            with col4:
+                st.metric("Total Transactions", len(df_report))
+            
+            # Summary tables
+            summary_data = {
+                'Monthly Performance': df_report.groupby('Chave').agg({
+                    'Comissão': 'sum',
+                    'Lucro_Empresa': 'sum',
+                    'AssessorReal': 'nunique'
+                }).round(2),
+                'Top 10 Assessors': df_report.groupby('AssessorReal')['Comissão'].sum().nlargest(10),
+                'Category Performance': df_report.groupby('Categoria').agg({
+                    'Comissão': 'sum',
+                    'Lucro_Empresa': 'sum'
+                }).round(2)
+            }
+            
+            # Create Excel report
+            from io import BytesIO
+            buffer = BytesIO()
+            
+            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                for sheet_name, data in summary_data.items():
+                    data.to_excel(writer, sheet_name=sheet_name)
+            
+            st.download_button(
+                "📥 Download Executive Summary Report",
+                buffer.getvalue(),
+                f"Executive_Summary_{'-'.join(selected_period)}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        
+        elif report_type == "Custom Report":
+            st.markdown("### 🛠️ Custom Report Builder")
+            
+            # Custom report options
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                groupby_column = st.selectbox(
+                    "Group By",
+                    ["AssessorReal", "Categoria", "Chave"]
+                )
+            
+            with col2:
+                aggregation_columns = st.multiselect(
+                    "Metrics to Include",
+                    ["Comissão", "Lucro_Empresa", "Pix_Assessor", "Tributo_Retido"],
+                    default=["Comissão", "Lucro_Empresa"]
+                )
+            
+            if aggregation_columns:
+                custom_report = df_report.groupby(groupby_column)[aggregation_columns].agg(['sum', 'mean', 'count'])
+                custom_report.columns = [f"{col}_{agg}" for col, agg in custom_report.columns]
+                
+                st.dataframe(custom_report, use_container_width=True)
+                
+                # Export custom report
+                csv_data = custom_report.to_csv().encode('utf-8')
+                st.download_button(
+                    "📥 Download Custom Report",
+                    csv_data,
+                    f"Custom_Report_{groupby_column}.csv",
+                    "text/csv"
+                )
+    
+    # Automated report scheduling (placeholder)
+    st.markdown("### 🔄 Automated Reports")
+    st.info("💡 **Future Feature**: Set up automated report generation and email delivery schedules.")
+    
+    # Quick stats
+    st.markdown("### 📈 Quick Statistics")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Data Points", len(df))
+    with col2:
+        st.metric("Time Periods", df["Chave"].nunique())
+    with col3:
+        st.metric("Categories", df["Categoria"].nunique())
+
+# --- MAIN EXECUTION ---
+if __name__ == "__main__":
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("**Taurus Analytics Dashboard**")
+    st.sidebar.markdown("Version 2.0")
+    st.sidebar.markdown("Built with Streamlit")
