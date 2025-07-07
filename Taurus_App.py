@@ -190,39 +190,39 @@ if page == "📤 Upload":
                 
         except Exception as e:
             st.error(f"❌ Error processing file: {e}")
-
 # --- EXECUTIVE DASHBOARD ---
 elif page == "📊 Executive Dashboard":
     st.markdown('<h1 class="main-header">📊 Executive Dashboard</h1>', unsafe_allow_html=True)
-    
+
     if st.session_state["df_taurus"] is None:
         st.warning("Please upload the Excel file first.")
         st.stop()
-    
+
     df = st.session_state["df_taurus"]
-    
-    # Time period filter
-    st.sidebar.markdown("### 🕐 Time Period")
-    chave_list = sorted(df["Chave"].dropna().unique())
-    selected_chaves = st.sidebar.multiselect(
-        "Select periods",
-        chave_list,
-        default=chave_list[-6:] if len(chave_list) >= 6 else chave_list  # Last 6 months
-    )
-    
+
+    # Time Period Filter (same as Macro View)
+    col1 = st.columns(1)[0]
+    with col1:
+        chave_list = sorted(df["Chave"].dropna().unique())
+        selected_chaves = st.multiselect(
+            "🕐 Select Time Periods",
+            chave_list,
+            default=chave_list[-6:] if len(chave_list) >= 6 else chave_list
+        )
+
     if selected_chaves:
         df_filtered = df[df["Chave"].isin(selected_chaves)]
-        
+
         # KPI Cards
         st.markdown("### 🎯 Key Performance Indicators")
         col1, col2, col3, col4, col5 = st.columns(5)
-        
+
         total_revenue = df_filtered["Comissão"].sum()
         total_pix = df_filtered["Pix_Assessor"].sum()
         total_profit = df_filtered["Lucro_Empresa"].sum()
         avg_transaction = df_filtered["Comissão"].mean()
         active_assessors = df_filtered["AssessorReal"].nunique()
-        
+
         with col1:
             st.metric("Total Revenue", format_currency(total_revenue))
         with col2:
@@ -233,26 +233,26 @@ elif page == "📊 Executive Dashboard":
             st.metric("Avg Transaction", format_currency(avg_transaction))
         with col5:
             st.metric("Active Assessors", active_assessors)
-        
+
         # Charts Row 1
         col1, col2 = st.columns(2)
-        
+
         with col1:
             # Revenue Evolution
             monthly_revenue = df_filtered.groupby('Chave')['Comissão'].sum().reset_index()
             monthly_revenue['Chave_Date'] = monthly_revenue['Chave'].apply(parse_chave_to_date)
             monthly_revenue = monthly_revenue.sort_values('Chave_Date')
-            
+
             fig_revenue = px.line(
-                monthly_revenue, 
-                x='Chave', 
+                monthly_revenue,
+                x='Chave',
                 y='Comissão',
                 title='📈 Revenue Evolution',
                 markers=True
             )
             fig_revenue.update_layout(xaxis_title="Period", yaxis_title="Revenue (R$)")
             st.plotly_chart(fig_revenue, use_container_width=True)
-        
+
         with col2:
             # Top Assessors
             top_assessors = df_filtered.groupby('AssessorReal')['Comissão'].sum().nlargest(10)
@@ -264,10 +264,10 @@ elif page == "📊 Executive Dashboard":
             )
             fig_assessors.update_layout(xaxis_title="Revenue (R$)", yaxis_title="Assessor")
             st.plotly_chart(fig_assessors, use_container_width=True)
-        
+
         # Charts Row 2
         col1, col2 = st.columns(2)
-        
+
         with col1:
             # Category Distribution
             category_dist = df_filtered.groupby('Categoria')['Comissão'].sum()
@@ -277,7 +277,7 @@ elif page == "📊 Executive Dashboard":
                 title='🎯 Revenue Distribution by Category'
             )
             st.plotly_chart(fig_pie, use_container_width=True)
-        
+
         with col2:
             # Profit Margin Analysis
             profit_margin = df_filtered.groupby('Chave').agg({
@@ -285,7 +285,7 @@ elif page == "📊 Executive Dashboard":
                 'Lucro_Empresa': 'sum'
             }).reset_index()
             profit_margin['Margin_Percent'] = (profit_margin['Lucro_Empresa'] / profit_margin['Comissão']) * 100
-            
+
             fig_margin = px.bar(
                 profit_margin,
                 x='Chave',
@@ -295,6 +295,8 @@ elif page == "📊 Executive Dashboard":
                 color_continuous_scale='RdYlGn'
             )
             st.plotly_chart(fig_margin, use_container_width=True)
+    else:
+        st.info("Please select at least one time period to display the dashboard.")
 
 # --- MACRO VIEW PAGE ---
 elif page == "🌍 Macro View":
