@@ -178,14 +178,64 @@ elif page == "Assessor View":
         # Display the table
         st.dataframe(category_with_totals.round(2), use_container_width=True )
         
-        # Export CSV
-        csv = category_with_totals.round(2).to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "📥 Download CSV",
-            csv,
-            f"{selected_assessor}_Category_Summary_{'_'.join(map(str, selected_chaves))}.csv",
-            "text/csv"
-        )
+        # --- DOWNLOAD SECTION ---
+        st.markdown("### 📥 Download Options")
+        
+        # Create two columns for download buttons
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Export category summary CSV
+            csv_summary = category_with_totals.round(2).to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "📊 Download Category Summary CSV",
+                csv_summary,
+                f"{selected_assessor}_Category_Summary_{'_'.join(map(str, selected_chaves))}.csv",
+                "text/csv"
+            )
+        
+        with col2:
+            # Export detailed transactions Excel
+            # Select only the required columns for the detailed export
+            detailed_cols = [
+                "Data Receita", "Conta", "Cliente", "Comissão", 
+                "Receita Assessor", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"
+            ]
+            
+            # Check which columns exist in the dataframe
+            available_cols = [col for col in detailed_cols if col in df_filtered.columns]
+            
+            if available_cols:
+                # Create detailed export with available columns
+                detailed_export = df_filtered[available_cols].copy()
+                
+                # Round numeric columns to 2 decimal places
+                numeric_cols = detailed_export.select_dtypes(include=['float64', 'int64']).columns
+                detailed_export[numeric_cols] = detailed_export[numeric_cols].round(2)
+                
+                # Convert to Excel format
+                from io import BytesIO
+                buffer = BytesIO()
+                
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    detailed_export.to_excel(writer, sheet_name='Payment_Details', index=False)
+                
+                excel_data = buffer.getvalue()
+                
+                st.download_button(
+                    "📋 Download Detailed Payment Info (Excel)",
+                    excel_data,
+                    f"{selected_assessor}_Payment_Details_{'_'.join(map(str, selected_chaves))}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            else:
+                st.warning("⚠️ Required columns for detailed export not found in the data.")
+        
+        # Show preview of detailed data
+        if 'detailed_export' in locals():
+            st.markdown("### 👀 Preview of Detailed Payment Information")
+            st.dataframe(detailed_export.head(10), use_container_width=True)
+            st.info(f"📊 Total transactions for {selected_assessor}: {len(detailed_export)}")
 
 # --- PROFIT PAGE ---
 elif page == "Profit":
