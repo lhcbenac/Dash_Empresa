@@ -54,10 +54,7 @@ page = st.sidebar.radio("Navigation", [
     "📊 Executive Dashboard", 
     "🌍 Macro View", 
     "👤 Assessor View", 
-    "📈 Performance Analytics",
-    "🎯 Goal Tracking",
-    "💰 Profit Center",
-    "📋 Reports"
+    "📈 Performance Analytics"
 ])
 
 # --- SESSION STORAGE ---
