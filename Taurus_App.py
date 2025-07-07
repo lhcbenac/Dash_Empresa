@@ -447,10 +447,10 @@ elif page == "👤 Assessor View":
             st.markdown(f"### 📊 Performance Overview: {selected_assessor}")
             
             col1, col2, col3, col4 = st.columns(4)
-            
+
             total_revenue = df_filtered["Comissão"].sum()
             total_transactions = len(df_filtered)
-            avg_transaction = total_revenue / total_transactions if total_transactions > 0 else 0
+            total_pix = df_filtered["Pix_Assessor"].sum()
             total_profit = df_filtered["Lucro_Empresa"].sum()
             
             with col1:
@@ -458,7 +458,7 @@ elif page == "👤 Assessor View":
             with col2:
                 st.metric("Total Transactions", total_transactions)
             with col3:
-                st.metric("Avg per Transaction", format_currency(avg_transaction))
+                st.metric("Total Pix Assessor", format_currency(total_pix))
             with col4:
                 st.metric("Generated Profit", format_currency(total_profit))
             
