@@ -507,8 +507,8 @@ elif page == "👤 Assessor View":
             with col2:
                 # Detailed transactions
                 detailed_cols = [
-                    "Data Receita", "Conta", "Cliente", "Categoria", "Produto",
-                    "Comissão", "Receita Assessor", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"
+                    "Data Receita", "Conta", "Cliente", "AssessorReal" , "Categoria", "Produto",
+                    "Comissão", "Receita Assessor", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa" , "Chave"
                 ]
                 available_cols = [col for col in detailed_cols if col in df_filtered.columns]
                 
@@ -517,7 +517,7 @@ elif page == "👤 Assessor View":
                     buffer = BytesIO()
                     
                     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        df_filtered[available_cols].to_excel(writer, sheet_name='Detailed_Transactions', index=False)
+                        df_filtered[available_cols].to_excel(writer, sheet_name='Taurus', index=False)
                         category_summary.to_excel(writer, sheet_name='Category_Summary', index=False)
                         monthly_performance.to_excel(writer, sheet_name='Monthly_Performance', index=False)
                     
