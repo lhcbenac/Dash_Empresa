@@ -468,32 +468,8 @@ elif page == "👤 Assessor View":
                 'Lucro_Empresa': 'sum',
                 'Chave': 'count'
             }).rename(columns={'Chave': 'Transaction_Count'})
-            monthly_performance = monthly_performance.reset_index()
-            
-            # Trends
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                fig_trend = px.line(
-                    monthly_performance,
-                    x='Chave',
-                    y='Comissão',
-                    title=f'📈 {selected_assessor} - Revenue Trend',
-                    markers=True
-                )
-                st.plotly_chart(fig_trend, use_container_width=True)
-            
-            with col2:
-                fig_transactions = px.bar(
-                    monthly_performance,
-                    x='Chave',
-                    y='Transaction_Count',
-                    title=f'📊 {selected_assessor} - Transaction Volume',
-                    color='Transaction_Count',
-                    color_continuous_scale='Blues'
-                )
-                st.plotly_chart(fig_transactions, use_container_width=True)
-            
+            monthly_performance = monthly_performance.reset_index() 
+           
             # Category breakdown
             financial_cols = ["Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
             category_summary = df_filtered.groupby("Categoria")[financial_cols].sum().reset_index()
