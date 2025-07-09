@@ -231,29 +231,29 @@ elif page == "Assessor View":
                 )
             else:
                 st.error("❌ 'Cliente' column not found in the source data either!")
-        
+                
         # Confirm final export columns include Cliente
-if "Cliente" not in df_filtered.columns:
-    st.warning("⚠️ 'Cliente' still missing — export will continue without it.")
-else:
-    st.success("✅ 'Cliente' column included in export!")
-
-# Export to CSV
-csv_all = df_filtered.to_csv(index=False).encode("utf-8")
-
-# Create dynamic filename
-filename_raw = f"FullData_{'_'.join(map(str, selected_chaves))}"
-if selected_assessors:
-    filename_raw += f"_Assessors_{'_'.join(selected_assessors[:3])}"
-filename_raw += ".csv"
-
-# Download button
-st.download_button(
-    label="📦 Download Full Data (Raw Rows)",
-    data=csv_all,
-    file_name=filename_raw,
-    mime="text/csv"
-)
+        if "Cliente" not in df_filtered.columns:
+            st.warning("⚠️ 'Cliente' still missing — export will continue without it.")
+        else:
+            st.success("✅ 'Cliente' column included in export!")
+        
+        # Export to CSV
+        csv_all = df_filtered.to_csv(index=False).encode("utf-8")
+        
+        # Create dynamic filename
+        filename_raw = f"FullData_{'_'.join(map(str, selected_chaves))}"
+        if selected_assessors:
+            filename_raw += f"_Assessors_{'_'.join(selected_assessors[:3])}"
+        filename_raw += ".csv"
+        
+        # Download button
+        st.download_button(
+            label="📦 Download Full Data (Raw Rows)",
+            data=csv_all,
+            file_name=filename_raw,
+            mime="text/csv"
+        )
 
 
 # --- PROFIT PAGE ---
