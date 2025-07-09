@@ -28,21 +28,27 @@ if page == "Upload":
         try:
             xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
             all_sheets = xls.sheet_names
-            expected_cols = {"Chave", "AssessorReal", "Pix_Assessor"}
+            required_cols = {"Chave", "AssessorReal", "Pix_Assessor"}
             data = []
             skipped_sheets = []
             
             for sheet in all_sheets:
                 try:
                     df = pd.read_excel(xls, sheet_name=sheet)
-                    if not expected_cols.issubset(df.columns):
+                    if not required_cols.issubset(df.columns):
                         skipped_sheets.append(sheet)
                         continue
-                    df = df[["Chave", "AssessorReal", "Pix_Assessor"]]
+                    
+                    # Include Cliente column if it exists
+                    cols_to_include = ["Chave", "AssessorReal", "Pix_Assessor"]
+                    if "Cliente" in df.columns:
+                        cols_to_include.append("Cliente")
+                    
+                    df = df[cols_to_include]
                     df["Distribuidor"] = sheet
                     data.append(df)
-                except:
-                    skipped_sheets.append(sheet)
+                except Exception as e:
+                    skipped_sheets.append(f"{sheet} (Error: {str(e)})")
             
             if not data:
                 st.error("❌ No valid sheets found. Please check columns.")
@@ -51,6 +57,9 @@ if page == "Upload":
                 st.session_state["df_all"] = df_all
                 st.session_state["skipped_sheets"] = skipped_sheets
                 st.success("✅ Data successfully loaded!")
+                
+                # Show loaded columns info
+                st.info(f"📋 Loaded columns: {', '.join(df_all.columns)}")
                 
                 if skipped_sheets:
                     with st.expander("⚠️ Skipped Sheets"):
@@ -214,37 +223,27 @@ elif page == "Assessor View":
         
         csv_totals = sheet_totals_with_total.to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download Sheet Totals CSV", csv_totals, f"{selected_assessor}_SheetTotals.csv", "text/csv")
-                
-        # ✅ Assume you have a filtered DataFrame called df_filtered
-        # Make sure 'Cliente' is included for export
-        export_columns = list(df_filtered.columns)
         
-        # If 'Cliente' is missing but should be there, warn the user
-        if "Cliente" not in export_columns:
-            st.warning("⚠️ 'Cliente' column not found — adding it if possible.")
-            if "Cliente" in st.session_state["df_all"].columns:
-                # Join with original to bring back Cliente
-                df_filtered = df_filtered.merge(
-                    st.session_state["df_all"][["Chave", "AssessorReal", "Cliente"]],
-                    on=["Chave", "AssessorReal"],
-                    how="left"
-                )
-            else:
-                st.error("❌ 'Cliente' column not found in the source data either!")
-                
-        # Confirm final export columns include Cliente
-        if "Cliente" not in df_filtered.columns:
-            st.warning("⚠️ 'Cliente' still missing — export will continue without it.")
+        # FIXED: Full Data Export with Cliente column
+        st.markdown("### 📦 Full Data Export")
+        
+        # Check if Cliente column exists in the filtered data
+        if "Cliente" in df_filtered.columns:
+            st.success("✅ 'Cliente' column found and will be included in the export!")
+            export_info = f"Export will include: {', '.join(df_filtered.columns)}"
         else:
-            st.success("✅ 'Cliente' column included in export!")
+            st.warning("⚠️ 'Cliente' column not found in the data. Export will continue without it.")
+            export_info = f"Export will include: {', '.join(df_filtered.columns)}"
+        
+        st.info(export_info)
         
         # Export to CSV
         csv_all = df_filtered.to_csv(index=False).encode("utf-8")
         
         # Create dynamic filename
-        filename_raw = f"FullData_{'_'.join(map(str, selected_chaves))}"
-        if selected_assessors:
-            filename_raw += f"_Assessors_{'_'.join(selected_assessors[:3])}"
+        filename_raw = f"FullData_{selected_assessor}"
+        if selected_months:
+            filename_raw += f"_{'_'.join(map(str, selected_months[:3]))}"  # Limit filename length
         filename_raw += ".csv"
         
         # Download button
@@ -254,7 +253,6 @@ elif page == "Assessor View":
             file_name=filename_raw,
             mime="text/csv"
         )
-
 
 # --- PROFIT PAGE ---
 elif page == "Profit":
