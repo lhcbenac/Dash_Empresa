@@ -1,182 +1,180 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import numpy as np
-from datetime import datetime
-
 # --- CONFIG ---
-st.set_page_config(
-    page_title="Utor Analytics Dashboard",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    page_icon="📊"
-)
-
-# --- CUSTOM CSS ---
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        margin: 0.5rem 0;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- SIDEBAR ---
-st.sidebar.title("🚀 Utor Analytics")
-page = st.sidebar.radio("Navigation", [
-    "📤 Upload",
-    "📊 Executive Dashboard",
-    "🌍 Macro View",
-    "👤 Assessor View",
-    "💰 Profit Analysis"
-])
-
-# --- SESSION STATE ---
+st.set_page_config(page_title="Pix Assessor Dashboard", layout="wide")
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.title("📂 Navigation")
+page = st.sidebar.radio("Go to", ["Upload", "Macro View", "Assessor View", "Profit"])
+# --- SESSION STORAGE ---
 if "df_all" not in st.session_state:
     st.session_state["df_all"] = None
-
-# --- HELPERS ---
-def parse_chave_to_date(chave):
-    try:
-        month, year = chave.split('_')
-        return datetime(int(year), int(month), 1)
-    except:
-        return None
-
-def format_currency(value):
-    return f"R$ {value:,.2f}"
-
-def calculate_growth_rate(current, previous):
-    if previous == 0:
-        return 0
-    return ((current - previous) / previous) * 100
-
-def create_gauge_chart(value, title, max_val=None):
-    if max_val is None:
-        max_val = value * 1.5
-
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number+delta",
-        value=value,
-        title={'text': title},
-        gauge={
-            'axis': {'range': [None, max_val]},
-            'bar': {'color': "darkblue"},
-            'steps': [
-                {'range': [0, max_val*0.5], 'color': "lightgray"},
-                {'range': [max_val*0.5, max_val*0.8], 'color': "gray"}
-            ],
-            'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': max_val*0.9
-            }
-        }
-    ))
-    fig.update_layout(height=300)
-    return fig
-
-# --- PAGES ---
-
-if page == "📤 Upload":
-    st.markdown('<h1 class="main-header">📤 Upload & Data Management</h1>', unsafe_allow_html=True)
-
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
-        uploaded_file = st.file_uploader(
-            "Upload your Utor Excel file (.xlsx)",
-            type=["xlsx"]
-        )
-
-    with col2:
-        st.info("📋 **Required Columns:**\n- Chave\n- AssessorReal\n- Pix_Assessor\n- Lucro_Empresa (optional)")
-
+if "skipped_sheets" not in st.session_state:
+    st.session_state["skipped_sheets"] = []
+if "uploaded_file_data" not in st.session_state:
+    st.session_state["uploaded_file_data"] = None
+# --- UPLOAD PAGE ---
+if page == "Upload":
+    st.title("📤 Upload Excel File")
+    uploaded_file = st.file_uploader("Upload the 'Utor_Detalhado.xlsx' file", type=["xlsx"])
     if uploaded_file:
+        # Store the uploaded file data in session state
+        st.session_state["uploaded_file_data"] = uploaded_file
+        try:
+            xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
+            all_sheets = xls.sheet_names
+            expected_cols = {"Chave", "AssessorReal", "Pix_Assessor"}
+            data = []
+            skipped_sheets = []
+            for sheet in all_sheets:
+                try:
+                    df = pd.read_excel(xls, sheet_name=sheet)
+                    if not expected_cols.issubset(df.columns):
+                        skipped_sheets.append(sheet)
+                        continue
+                    df = df[["Chave", "AssessorReal", "Pix_Assessor"]]
+                    df["Distribuidor"] = sheet
+                    data.append(df)
+                except:
+                    skipped_sheets.append(sheet)
+            if not data:
+                st.error("❌ No valid sheets found. Please check columns.")
+            else:
+                df_all = pd.concat(data, ignore_index=True)
+                st.session_state["df_all"] = df_all
+                st.session_state["skipped_sheets"] = skipped_sheets
+                st.success("✅ Data successfully loaded!")
+                if skipped_sheets:
+                    with st.expander("⚠️ Skipped Sheets"):
+                        for s in skipped_sheets:
+                            st.write(f"- {s}")
+        except Exception as e:
+            st.error(f"❌ Error reading file: {e}")
+# --- MACRO VIEW PAGE ---
+elif page == "Macro View":
+    st.title("📊 Macro Summary View")
+    if st.session_state["df_all"] is None:
+        st.warning("Please upload the Excel file in the Upload section.")
+        st.stop()
+    df_all = st.session_state["df_all"]
+    chave_list = sorted(df_all["Chave"].dropna().unique())
+    selected_chaves = st.multiselect("Select one or more Chave periods", chave_list, default=chave_list[:1])
+    if selected_chaves:
+        df_filtered = df_all[df_all["Chave"].isin(selected_chaves)]
+        st.markdown(f"### Summary for Chave(s): {', '.join(map(str, selected_chaves))}")
+        pivot_df = pd.pivot_table(
+            df_filtered,
+            index="AssessorReal",
+            columns="Distribuidor",
+            values="Pix_Assessor",
+            aggfunc="sum",
+            fill_value=0,
+            margins=True,
+            margins_name="Total"
+        ).reset_index()
+        st.dataframe(pivot_df.round(2), use_container_width=True)
+        # Export summarized pivot table CSV
+        csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download CSV", csv, "Pix_Summary_Selected_Chaves.csv", "text/csv")
+        # Export full filtered raw data CSV
+        csv_all = df_filtered.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📦 Download Full Data (Raw Rows)",
+            data=csv_all,
+            file_name="FullData_Selected_Chaves.csv",
+            mime="text/csv"
+        )
+    else:
+        st.warning("Please select at least one Chave.")
+# --- ASSESSOR VIEW PAGE ---
+elif page == "Assessor View":
+    st.title("👤 Assessor Breakdown View")
+    if st.session_state["df_all"] is None:
+        st.warning("Please upload the Excel file in the Upload section.")
+        st.stop()
+    df_all = st.session_state["df_all"]
+    assessor_list = sorted(df_all["AssessorReal"].dropna().unique())
+    selected_assessor = st.selectbox("Select AssessorReal", assessor_list)
+    df_filtered = df_all[df_all["AssessorReal"] == selected_assessor]
+    if df_filtered.empty:
+        st.warning("No data for selected AssessorReal.")
+    else:
+        pivot_df = pd.pivot_table(
+            df_filtered,
+            index="Distribuidor",
+            columns="Chave",
+            values="Pix_Assessor",
+            aggfunc="sum",
+            fill_value=0,
+            margins=True,
+            margins_name="Total"
+        ).reset_index()
+        st.markdown(f"### Summary for AssessorReal: {selected_assessor}")
+        st.dataframe(pivot_df.round(2), use_container_width=True)
+        # Export summarized pivot table CSV
+        csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download CSV", csv, f"{selected_assessor}_Summary.csv", "text/csv")
+        # Export full filtered raw data CSV
+        csv_all = df_filtered.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📦 Download Full Data (Raw Rows)",
+            data=csv_all,
+            file_name=f"{selected_assessor}_FullData.csv",
+            mime="text/csv"
+        )
+# --- PROFIT PAGE ---
+elif page == "Profit":
+    st.title("💰 Profit Summary (Lucro_Empresa)")
+    if st.session_state["df_all"] is None or st.session_state["uploaded_file_data"] is None:
+        st.warning("Please upload the Excel file in the Upload section first.")
+        st.stop()
+    st.success("✅ Using previously uploaded file for Lucro_Empresa analysis")
+    uploaded_file = st.session_state["uploaded_file_data"]
+    try:
         xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
         all_sheets = xls.sheet_names
-        expected_cols = {"Chave", "AssessorReal", "Pix_Assessor"}
-        data = []
-        skipped_sheets = []
-
-        progress = st.progress(0)
-        for idx, sheet in enumerate(all_sheets):
-            df = pd.read_excel(xls, sheet_name=sheet)
-            if not expected_cols.issubset(df.columns):
-                skipped_sheets.append(sheet)
+        lucro_data = []
+        for sheet in all_sheets:
+            try:
+                df = pd.read_excel(xls, sheet_name=sheet)
+                if {"Chave", "Lucro_Empresa"}.issubset(df.columns):  # ✅ updated
+                    temp = df[["Chave", "Lucro_Empresa"]].copy()     # ✅ updated
+                    temp["Distribuidor"] = sheet
+                    lucro_data.append(temp)
+            except:
                 continue
-
-            available_cols = ["Chave", "AssessorReal", "Pix_Assessor"]
-            if "Lucro_Empresa" in df.columns:
-                available_cols.append("Lucro_Empresa")
-            if "Comissão" in df.columns:
-                available_cols.append("Comissão")
-
-            df = df[available_cols]
-            df["Distribuidor"] = sheet
-            df['Chave_Date'] = df['Chave'].apply(parse_chave_to_date)
-            df['Month_Year'] = df['Chave_Date'].dt.strftime('%Y-%m')
-            data.append(df)
-            progress.progress((idx + 1) / len(all_sheets))
-
-        if not data:
-            st.error("❌ No valid sheets found.")
+        if not lucro_data:
+            st.error("❌ No sheets contained both 'Chave' and 'Lucro_Empresa' columns.")
         else:
-            df_all = pd.concat(data, ignore_index=True)
-            st.session_state["df_all"] = df_all
+            df_lucro = pd.concat(lucro_data, ignore_index=True)
+            st.markdown("### 🔍 Filter Options")
+            chave_list = sorted(df_lucro["Chave"].dropna().unique())
+            selected_chaves = st.multiselect(
+                "Select Chave periods to include (leave empty for all)",
+                chave_list,
+                default=chave_list
+            )
+            df_lucro_filtered = df_lucro[df_lucro["Chave"].isin(selected_chaves)] if selected_chaves else df_lucro
+            lucro_summary = (
+                df_lucro_filtered.groupby("Chave")["Lucro_Empresa"]  # ✅ updated
+                .sum()
+                .reset_index()
+                .sort_values("Chave")
+            )
+            total_sum = lucro_summary["Lucro_Empresa"].sum()  # ✅ updated
+            st.markdown("### 📈 Total Lucro_Empresa by Chave")
+            st.metric(
+                label="💰 Total Sum of All Values",
+                value=f"{total_sum:,.2f}",
+                help="Sum of all Lucro_Empresa values in the chart below"
+            )
+            st.bar_chart(lucro_summary.set_index("Chave"))
+            st.markdown("### 📊 Summary Table")
+            st.dataframe(lucro_summary.round(2), use_container_width=True)
+            csv = lucro_summary.to_csv(index=False).encode("utf-8")
+            filename = f"Lucro_Empresa_byChave{'_'.join(map(str, selected_chaves)) if selected_chaves else 'All'}.csv"
+            st.download_button("📥 Download Profit CSV", csv, filename, "text/csv")
+    except Exception as e:
+        st.error(f"❌ Error processing file: {e}")
 
-            st.success("✅ Data loaded successfully!")
-
-            st.markdown("### 📊 Data Overview")
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total Transactions", len(df_all))
-            with col2:
-                st.metric("Unique Assessors", df_all["AssessorReal"].nunique())
-            with col3:
-                st.metric("Unique Distributors", df_all["Distribuidor"].nunique())
-            with col4:
-                total_pix = df_all["Pix_Assessor"].sum()
-                st.metric("Total Pix", format_currency(total_pix))
-
-            st.markdown("### 🔍 Missing Data Check")
-            missing = df_all.isnull().sum()
-            st.dataframe(missing[missing > 0])
-
-            st.markdown("### 👀 Sample Data")
-            st.dataframe(df_all.head())
-
-elif page == "📊 Executive Dashboard":
-    st.markdown('<h1 class="main-header">📊 Executive Dashboard</h1>', unsafe_allow_html=True)
-    if st.session_state["df_all"] is not None:
-        df = st.session_state["df_all"]
-        st.dataframe(df.head())
-    else:
-        st.warning("📤 Please upload data first.")
-
-elif page == "🌍 Macro View":
-    st.markdown('<h1 class="main-header">🌍 Macro View</h1>', unsafe_allow_html=True)
-    st.info("Add Macro View content here.")
-
-elif page == "👤 Assessor View":
-    st.markdown('<h1 class="main-header">👤 Assessor View</h1>', unsafe_allow_html=True)
-    st.info("Add Assessor View content here.")
-
-elif page == "💰 Profit Analysis":
-    st.markdown('<h1 class="main-header">💰 Profit Analysis</h1>', unsafe_allow_html=True)
-    st.info("Add Profit Analysis content here.")
-
+    except Exception as e:
+        st.error(f"❌ Error processing file: {e}")
