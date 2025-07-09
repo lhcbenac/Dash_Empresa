@@ -215,14 +215,25 @@ elif page == "Assessor View":
         csv_totals = sheet_totals_with_total.to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download Sheet Totals CSV", csv_totals, f"{selected_assessor}_SheetTotals.csv", "text/csv")
         
-        # Export full filtered raw data CSV
+        # Example: make sure Cliente is included
+        export_cols = ["Chave", "AssessorReal", "Pix_Assessor", "Cliente"]
+        df_filtered = df_filtered[export_cols]  # Only these columns will be exported
+        
+        # Now export as usual
         csv_all = df_filtered.to_csv(index=False).encode("utf-8")
+        
+        filename_raw = f"FullData_{'_'.join(map(str, selected_chaves))}"
+        if selected_assessors:
+            filename_raw += f"_Assessors_{'_'.join(selected_assessors[:3])}"
+        filename_raw += ".csv"
+        
         st.download_button(
             label="📦 Download Full Data (Raw Rows)",
             data=csv_all,
-            file_name=f"{selected_assessor}_FullData.csv",
+            file_name=filename_raw,
             mime="text/csv"
         )
+
 
 # --- PROFIT PAGE ---
 elif page == "Profit":
