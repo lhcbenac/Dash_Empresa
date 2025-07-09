@@ -214,25 +214,46 @@ elif page == "Assessor View":
         
         csv_totals = sheet_totals_with_total.to_csv(index=False).encode("utf-8")
         st.download_button("📥 Download Sheet Totals CSV", csv_totals, f"{selected_assessor}_SheetTotals.csv", "text/csv")
+                
+        # ✅ Assume you have a filtered DataFrame called df_filtered
+        # Make sure 'Cliente' is included for export
+        export_columns = list(df_filtered.columns)
         
-        # Example: make sure Cliente is included
-        export_cols = ["Chave", "AssessorReal", "Pix_Assessor", "Cliente"]
-        df_filtered = df_filtered[export_cols]  # Only these columns will be exported
+        # If 'Cliente' is missing but should be there, warn the user
+        if "Cliente" not in export_columns:
+            st.warning("⚠️ 'Cliente' column not found — adding it if possible.")
+            if "Cliente" in st.session_state["df_all"].columns:
+                # Join with original to bring back Cliente
+                df_filtered = df_filtered.merge(
+                    st.session_state["df_all"][["Chave", "AssessorReal", "Cliente"]],
+                    on=["Chave", "AssessorReal"],
+                    how="left"
+                )
+            else:
+                st.error("❌ 'Cliente' column not found in the source data either!")
         
-        # Now export as usual
-        csv_all = df_filtered.to_csv(index=False).encode("utf-8")
-        
-        filename_raw = f"FullData_{'_'.join(map(str, selected_chaves))}"
-        if selected_assessors:
-            filename_raw += f"_Assessors_{'_'.join(selected_assessors[:3])}"
-        filename_raw += ".csv"
-        
-        st.download_button(
-            label="📦 Download Full Data (Raw Rows)",
-            data=csv_all,
-            file_name=filename_raw,
-            mime="text/csv"
-        )
+        # Confirm final export columns include Cliente
+if "Cliente" not in df_filtered.columns:
+    st.warning("⚠️ 'Cliente' still missing — export will continue without it.")
+else:
+    st.success("✅ 'Cliente' column included in export!")
+
+# Export to CSV
+csv_all = df_filtered.to_csv(index=False).encode("utf-8")
+
+# Create dynamic filename
+filename_raw = f"FullData_{'_'.join(map(str, selected_chaves))}"
+if selected_assessors:
+    filename_raw += f"_Assessors_{'_'.join(selected_assessors[:3])}"
+filename_raw += ".csv"
+
+# Download button
+st.download_button(
+    label="📦 Download Full Data (Raw Rows)",
+    data=csv_all,
+    file_name=filename_raw,
+    mime="text/csv"
+)
 
 
 # --- PROFIT PAGE ---
