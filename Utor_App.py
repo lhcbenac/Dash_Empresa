@@ -718,14 +718,5 @@ elif page == "💰 Profit Analysis":
                 )
                 st.plotly_chart(fig_time, use_container_width=True)
             
-            with col2:
-                # Profit by distributor
-                fig_dist = px.bar(
-                    dist_summary,
-                    x='Lucro_Empresa',
-                    y='Distribuidor',
-                    orientation='h',
-                    title='📊 Profit by Distributor'
-                )
-                st.plotly_chart(fig_dist, use_container_width=True)
+
             
