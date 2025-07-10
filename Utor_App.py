@@ -380,30 +380,6 @@ elif page == "👤 Assessor View":
             else:
                 st.metric("📊 Profit", "N/A")
         
-        # Performance Charts
-        st.markdown("### 📊 Performance Analytics")
-        
-        chart_col1, chart_col2 = st.columns(2)
-        
-        with chart_col1:
-            # Performance by month
-            if len(selected_months) > 1:
-                monthly_perf = df_filtered.groupby("Chave")["Pix_Assessor"].sum().reset_index()
-                monthly_perf = monthly_perf.sort_values("Chave")
-                
-                fig_monthly = create_performance_chart(monthly_perf, "Chave", "Pix_Assessor", 
-                                                     "Monthly Performance", "line")
-                st.plotly_chart(fig_monthly, use_container_width=True)
-        
-        with chart_col2:
-            # Performance by Distribuidor
-            dist_perf = df_filtered.groupby("Distribuidor")["Pix_Assessor"].sum().reset_index()
-            dist_perf = dist_perf.sort_values("Pix_Assessor", ascending=False)
-            
-            fig_dist = create_performance_chart(dist_perf, "Distribuidor", "Pix_Assessor", 
-                                              "Performance by Distribuidor", "bar")
-            st.plotly_chart(fig_dist, use_container_width=True)
-        
         # Main pivot table
         st.markdown("### 📋 Detailed Breakdown")
         pivot_df = pd.pivot_table(
@@ -435,6 +411,30 @@ elif page == "👤 Assessor View":
         sheet_totals_with_total = pd.concat([sheet_totals, total_row], ignore_index=True)
         
         st.dataframe(sheet_totals_with_total, use_container_width=True, hide_index=True)
+        
+        # Performance Charts
+        st.markdown("### 📊 Performance Analytics")
+        
+        chart_col1, chart_col2 = st.columns(2)
+        
+        with chart_col1:
+            # Performance by month
+            if len(selected_months) > 1:
+                monthly_perf = df_filtered.groupby("Chave")["Pix_Assessor"].sum().reset_index()
+                monthly_perf = monthly_perf.sort_values("Chave")
+                
+                fig_monthly = create_performance_chart(monthly_perf, "Chave", "Pix_Assessor", 
+                                                     "Monthly Performance", "line")
+                st.plotly_chart(fig_monthly, use_container_width=True)
+        
+        with chart_col2:
+            # Performance by Distribuidor
+            dist_perf = df_filtered.groupby("Distribuidor")["Pix_Assessor"].sum().reset_index()
+            dist_perf = dist_perf.sort_values("Pix_Assessor", ascending=False)
+            
+            fig_dist = create_performance_chart(dist_perf, "Distribuidor", "Pix_Assessor", 
+                                              "Performance by Distribuidor", "bar")
+            st.plotly_chart(fig_dist, use_container_width=True)
         
         # Export section
         st.markdown("### 📥 Export Options")
