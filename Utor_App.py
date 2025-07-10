@@ -358,27 +358,27 @@ elif page == "👤 Assessor View":
         with highlight_col1:
             if "Comissão" in df_filtered.columns:
                 total_commission = df_filtered["Comissão"].sum()
-                create_metric_card("💰 Total Commission", format_currency(total_commission))
+                st.metric("💰 Commission", format_currency(total_commission))
             else:
-                create_metric_card("💰 Total Commission", "N/A")
+                st.metric("💰 Commission", "N/A")
         
         with highlight_col2:
             if "Imposto" in df_filtered.columns:
                 total_tax = df_filtered["Imposto"].sum()
-                create_metric_card("🏛️ Total Tax", format_currency(total_tax))
+                st.metric("🏛️ Tax", format_currency(total_tax))
             else:
-                create_metric_card("🏛️ Total Tax", "N/A")
+                st.metric("🏛️ Tax", "N/A")
         
         with highlight_col3:
             total_pix = df_filtered["Pix_Assessor"].sum()
-            create_metric_card("💳 Total Pix Assessor", format_currency(total_pix))
+            st.metric("💳 Pix Assessor", format_currency(total_pix))
         
         with highlight_col4:
             if "Lucro_Empresa" in df_filtered.columns:
                 total_profit = df_filtered["Lucro_Empresa"].sum()
-                create_metric_card("📊 Company Profit", format_currency(total_profit))
+                st.metric("📊 Profit", format_currency(total_profit))
             else:
-                create_metric_card("📊 Company Profit", "N/A")
+                st.metric("📊 Profit", "N/A")
         
         # Performance Charts
         st.markdown("### 📊 Performance Analytics")
