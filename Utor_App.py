@@ -301,17 +301,30 @@ elif page == "📊 Macro View":
         
         # Export options
         st.markdown("### 📥 Export Options")
-        col1, col2 = st.columns(2)
         
-        with col1:
-            csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
-            filename = f"Pix_Summary_{'_'.join(map(str, selected_chaves))}.csv"
-            st.download_button("📥 Download Summary CSV", csv, filename, "text/csv")
+        # Create Excel file with multiple sheets
+        from io import BytesIO
         
-        with col2:
-            csv_all = df_filtered.to_csv(index=False).encode("utf-8")
-            filename_raw = f"FullData_{'_'.join(map(str, selected_chaves))}.csv"
-            st.download_button("📦 Download Full Data", csv_all, filename_raw, "text/csv")
+        # Create a BytesIO buffer
+        excel_buffer = BytesIO()
+        
+        # Create Excel writer object
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            # Sheet 1: Raw Data
+            df_filtered.to_excel(writer, sheet_name='Raw_Data', index=False)
+            # Sheet 2: Summary Table
+            pivot_df.round(2).to_excel(writer, sheet_name='Summary_Table', index=False)
+        
+        excel_buffer.seek(0)
+        
+        # Download button for Excel file
+        filename_excel = f"Macro_Analysis_{'_'.join(map(str, selected_chaves))}.xlsx"
+        st.download_button(
+            label="📊 Download Excel Report",
+            data=excel_buffer.getvalue(),
+            file_name=filename_excel,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     
     else:
         st.warning("Please select at least one Chave period.")
@@ -449,21 +462,31 @@ elif page == "👤 Assessor View":
         
         st.info(export_info)
         
-        # Export buttons
-        col1, col2, col3 = st.columns(3)
+        # Create Excel file with multiple sheets
+        from io import BytesIO
         
-        with col1:
-            csv = pivot_df.round(2).to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Download Summary CSV", csv, f"{selected_assessor}_Summary.csv", "text/csv")
+        # Create a BytesIO buffer
+        excel_buffer = BytesIO()
         
-        with col2:
-            csv_totals = sheet_totals_with_total.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Download Totals CSV", csv_totals, f"{selected_assessor}_Totals.csv", "text/csv")
+        # Create Excel writer object
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            # Sheet 1: Raw Data (all filtered data)
+            df_filtered.to_excel(writer, sheet_name='Raw_Data', index=False)
+            # Sheet 2: Summary Table (pivot table)
+            pivot_df.round(2).to_excel(writer, sheet_name='Summary_Table', index=False)
+            # Sheet 3: Distribuidor Totals
+            sheet_totals_with_total.to_excel(writer, sheet_name='Distribuidor_Totals', index=False)
         
-        with col3:
-            csv_all = df_filtered.to_csv(index=False).encode("utf-8")
-            filename_raw = f"FullData_{selected_assessor}.csv"
-            st.download_button("📦 Download Full Data", csv_all, filename_raw, "text/csv")
+        excel_buffer.seek(0)
+        
+        # Download button for Excel file
+        filename_excel = f"Assessor_Report_{selected_assessor}.xlsx"
+        st.download_button(
+            label="📊 Download Complete Excel Report",
+            data=excel_buffer.getvalue(),
+            file_name=filename_excel,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 # --- PROFIT PAGE ---
 elif page == "💰 Profit Analysis":
