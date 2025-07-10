@@ -227,6 +227,21 @@ elif page == "📊 Macro View":
             else:
                 st.metric("📊 Company Profit", "N/A")
         
+        # Summary Table
+        st.markdown("### 📋 Summary Table")
+        pivot_df = pd.pivot_table(
+            df_filtered,
+            index="AssessorReal",
+            columns="Distribuidor",
+            values="Pix_Assessor",
+            aggfunc="sum",
+            fill_value=0,
+            margins=True,
+            margins_name="Total"
+        ).reset_index()
+        
+        st.dataframe(pivot_df.round(2), use_container_width=True)
+        
         # Charts Section
         st.markdown("### 📊 Performance Analytics")
         
@@ -283,21 +298,6 @@ elif page == "📊 Macro View":
                     fig_margin = px.bar(margin_data, x="Distribuidor", y="Profit_Margin", 
                                       title="Profit Margin % by Distribuidor")
                     st.plotly_chart(fig_margin, use_container_width=True)
-        
-        # Summary Table
-        st.markdown("### 📋 Summary Table")
-        pivot_df = pd.pivot_table(
-            df_filtered,
-            index="AssessorReal",
-            columns="Distribuidor",
-            values="Pix_Assessor",
-            aggfunc="sum",
-            fill_value=0,
-            margins=True,
-            margins_name="Total"
-        ).reset_index()
-        
-        st.dataframe(pivot_df.round(2), use_container_width=True)
         
         # Export options
         st.markdown("### 📥 Export Options")
