@@ -114,7 +114,7 @@ if page == "📤 Upload":
                         
                         # Include all available columns
                         available_cols = ["Chave", "AssessorReal", "Pix_Assessor"]
-                        optional_cols = ["Cliente", "Comissão", "Imposto", "Valor Liquido", "Lucro_Empresa", "Chave_Interna"]
+                        optional_cols = ["Cliente", "Comissão", "Imposto Retido", "Valor Liquido", "Lucro_Empresa", "Chave_Interna"]
                         
                         for col in optional_cols:
                             if col in df.columns:
