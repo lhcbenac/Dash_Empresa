@@ -211,7 +211,7 @@ elif page == "📊 Macro View":
         
         with kpi_col2:
             if "Imposto" in df_filtered.columns:
-                total_tax = df_filtered["Imposto"].sum()
+                total_tax = df_filtered["Imposto Retido"].sum()
                 st.metric("🏛️ Total Tax", format_currency(total_tax))
             else:
                 st.metric("🏛️ Total Tax", "N/A")
@@ -377,7 +377,7 @@ elif page == "👤 Assessor View":
         
         with highlight_col2:
             if "Imposto" in df_filtered.columns:
-                total_tax = df_filtered["Imposto"].sum()
+                total_tax = df_filtered["Imposto Retido"].sum()
                 st.metric("🏛️ Tax", format_currency(total_tax))
             else:
                 st.metric("🏛️ Tax", "N/A")
