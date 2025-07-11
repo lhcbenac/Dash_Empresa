@@ -114,7 +114,7 @@ if page == "📤 Upload":
                         
                         # Include all available columns
                         available_cols = ["Chave", "AssessorReal", "Pix_Assessor"]
-                        optional_cols = ["Cliente", "Comissão", "Imposto Retido", "Valor Liquido", "Lucro_Empresa", "Chave_Interna"]
+                        optional_cols = ["Cliente", "Comissão", "Imposto", "Valor Liquido", "Lucro_Empresa", "Chave_Interna"]
                         
                         for col in optional_cols:
                             if col in df.columns:
@@ -211,7 +211,7 @@ elif page == "📊 Macro View":
         
         with kpi_col2:
             if "Imposto" in df_filtered.columns:
-                total_tax = df_filtered["Imposto Retido"].sum()
+                total_tax = df_filtered["Imposto"].sum()
                 st.metric("🏛️ Total Tax", format_currency(total_tax))
             else:
                 st.metric("🏛️ Total Tax", "N/A")
@@ -377,7 +377,7 @@ elif page == "👤 Assessor View":
         
         with highlight_col2:
             if "Imposto" in df_filtered.columns:
-                total_tax = df_filtered["Imposto Retido"].sum()
+                total_tax = df_filtered["Imposto"].sum()
                 st.metric("🏛️ Tax", format_currency(total_tax))
             else:
                 st.metric("🏛️ Tax", "N/A")
@@ -588,9 +588,30 @@ elif page == "💰 Profit Analysis":
                 
                 # Export
                 st.markdown("### 📥 Export Options")
-                csv = lucro_summary.to_csv(index=False).encode("utf-8")
-                filename = f"Profit_Analysis_{'_'.join(map(str, selected_chaves)) if selected_chaves else 'All'}.csv"
-                st.download_button("📥 Download Profit Analysis", csv, filename, "text/csv")
+                
+                # Create Excel file with multiple sheets
+                from io import BytesIO
+                
+                # Create a BytesIO buffer
+                excel_buffer = BytesIO()
+                
+                # Create Excel writer object
+                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                    # Sheet 1: Raw Data
+                    df_lucro_filtered.to_excel(writer, sheet_name='Raw_Profit_Data', index=False)
+                    # Sheet 2: Summary Table
+                    lucro_summary.round(2).to_excel(writer, sheet_name='Profit_Summary', index=False)
+                
+                excel_buffer.seek(0)
+                
+                # Download button for Excel file
+                filename_excel = f"Profit_Analysis_{'_'.join(map(str, selected_chaves)) if selected_chaves else 'All'}.xlsx"
+                st.download_button(
+                    label="📊 Download Profit Analysis Excel",
+                    data=excel_buffer.getvalue(),
+                    file_name=filename_excel,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
                 
         except Exception as e:
             st.error(f"❌ Error processing file: {e}")
