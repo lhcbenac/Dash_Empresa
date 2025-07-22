@@ -152,8 +152,8 @@ def create_evolution_chart(df):
     )
     
     fig.update_xaxes(title_text="Date", row=2, col=1)
-    fig.update_yaxes(title_text="PnL ($)", row=1, col=1)
-    fig.update_yaxes(title_text="Drawdown ($)", row=2, col=1)
+    fig.update_yaxes(title_text="PnL (R$)", row=1, col=1)
+    fig.update_yaxes(title_text="Drawdown (R$)", row=2, col=1)
     
     return fig
 
@@ -183,7 +183,7 @@ def create_monthly_performance_chart(df):
     fig.update_layout(
         title='Monthly Performance',
         xaxis_title='Month',
-        yaxis_title='PnL ($)',
+        yaxis_title='PnL (R$)',
         height=400
     )
     
