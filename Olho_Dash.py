@@ -39,11 +39,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-def parse_excel_data(uploaded_file):
-    """Parse the Excel file and extract trading data"""
+def load_data_from_file():
+    """Load data from the Backtesting_history.xlsx file in the repository"""
     try:
-        # Read Excel file
-        workbook = openpyxl.load_workbook(uploaded_file)
+        # Load the Excel file directly from the repository
+        workbook = openpyxl.load_workbook('Backtesting_history.xlsx')
         
         # Get Trades sheet
         trades_sheet = workbook["Trades"]
@@ -80,8 +80,12 @@ def parse_excel_data(uploaded_file):
         
         return df
         
+    except FileNotFoundError:
+        st.error("❌ Backtesting_history.xlsx file not found in the repository!")
+        st.info("Please make sure the file 'Backtesting_history.xlsx' is uploaded to your GitHub repository.")
+        return None
     except Exception as e:
-        st.error(f"Error parsing file: {str(e)}")
+        st.error(f"❌ Error loading data: {str(e)}")
         return None
 
 def calculate_drawdown(df, portfolio_size=50000):
@@ -152,8 +156,8 @@ def create_evolution_chart(df):
     )
     
     fig.update_xaxes(title_text="Date", row=2, col=1)
-    fig.update_yaxes(title_text="PnL (R$)", row=1, col=1)
-    fig.update_yaxes(title_text="Drawdown (R$)", row=2, col=1)
+    fig.update_yaxes(title_text="PnL ($)", row=1, col=1)
+    fig.update_yaxes(title_text="Drawdown ($)", row=2, col=1)
     
     return fig
 
@@ -183,7 +187,7 @@ def create_monthly_performance_chart(df):
     fig.update_layout(
         title='Monthly Performance',
         xaxis_title='Month',
-        yaxis_title='PnL (R$)',
+        yaxis_title='PnL ($)',
         height=400
     )
     
@@ -194,22 +198,225 @@ def main():
     st.title("📈 Trading Strategy Dashboard")
     st.markdown("---")
     
-    # Sidebar - Only file upload
-    with st.sidebar:
-        st.header("📁 File Upload")
-        uploaded_file = st.file_uploader(
-            "Upload your trading data (Excel file)",
-            type=['xlsx', 'xls'],
-            help="Upload the Excel file containing your trading data"
-        )
+    # Load data from the repository file
+    with st.spinner("Loading trading data..."):
+        df = load_data_from_file()
+    
+    if df is not None and not df.empty:
+        # Success message
+        st.success(f"✅ Data loaded successfully! Found {len(df)} trading operations.")
         
-        if uploaded_file is not None:
-            st.success("File uploaded successfully!")
-        else:
-            st.info("Please upload an Excel file to begin analysis.")
+        # Filters section in main area
+        st.header("🔍 Filters")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Month filter
+            available_months = sorted(df['month'].astype(str).unique())
+            selected_months = st.multiselect(
+                "Select Month(s)",
+                options=available_months,
+                default=available_months,
+                help="Filter data by specific months"
+            )
+        
+        with col2:
+            # Strategy filter
+            available_strategies = sorted(df['strategy'].unique())
+            selected_strategies = st.multiselect(
+                "Select Strategy(ies)",
+                options=available_strategies,
+                default=available_strategies,
+                help="Filter data by trading strategies"
+            )
+        
+        with col3:
+            # Asset filter
+            available_assets = sorted(df['asset'].unique())
+            selected_assets = st.multiselect(
+                "Select Asset(s)",
+                options=available_assets,
+                default=available_assets,
+                help="Filter data by specific assets"
+            )
+        
+        # Apply filters
+        filtered_df = df[
+            (df['month'].astype(str).isin(selected_months)) &
+            (df['strategy'].isin(selected_strategies)) &
+            (df['asset'].isin(selected_assets))
+        ].copy()
+        
+        st.markdown("---")
+        
+        if not filtered_df.empty:
+            # Key Metrics Row
+            st.header("📊 Key Performance Metrics")
+            col1, col2, col3, col4, col5 = st.columns(5)
             
-            # Show sample data format
-            st.subheader("📋 Expected Data Format")
+            total_operations = len(filtered_df)
+            total_pnl = filtered_df['pnl'].sum()
+            avg_pnl_per_trade = filtered_df['pnl'].mean()
+            win_rate = (filtered_df['pnl'] > 0).mean() * 100
+            
+            # Calculate profit factor
+            winning_trades = filtered_df[filtered_df['pnl'] > 0]['pnl'].sum()
+            losing_trades = abs(filtered_df[filtered_df['pnl'] < 0]['pnl'].sum())
+            profit_factor = winning_trades / losing_trades if losing_trades > 0 else float('inf')
+            
+            # Calculate portfolio percentage return
+            portfolio_return_pct = (total_pnl / 50000) * 100
+            
+            with col1:
+                st.metric(
+                    label="Total Operations",
+                    value=f"{total_operations:,}",
+                    help="Total number of trading operations"
+                )
+            
+            with col2:
+                st.metric(
+                    label="Total PnL",
+                    value=f"${total_pnl:,.2f}",
+                    delta=f"{portfolio_return_pct:+.2f}%" if total_pnl != 0 else "0%",
+                    help="Total profit and loss with portfolio percentage"
+                )
+            
+            with col3:
+                st.metric(
+                    label="Average PnL/Trade",
+                    value=f"${avg_pnl_per_trade:.2f}",
+                    help="Average profit per trade"
+                )
+            
+            with col4:
+                st.metric(
+                    label="Win Rate",
+                    value=f"{win_rate:.1f}%",
+                    help="Percentage of profitable trades"
+                )
+            
+            with col5:
+                st.metric(
+                    label="Profit Factor",
+                    value=f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞",
+                    help="Ratio of gross profits to gross losses"
+                )
+            
+            st.markdown("---")
+            
+            # Charts Row
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                st.subheader("📈 PnL Evolution & Drawdown")
+                evolution_fig = create_evolution_chart(filtered_df)
+                st.plotly_chart(evolution_fig, use_container_width=True)
+            
+            with col2:
+                st.subheader("📅 Monthly Performance")
+                monthly_fig = create_monthly_performance_chart(filtered_df)
+                st.plotly_chart(monthly_fig, use_container_width=True)
+            
+            # Additional Analytics
+            st.subheader("📋 Detailed Analytics")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.write("**Operations by Day**")
+                daily_ops = filtered_df.groupby(filtered_df['date'].dt.date).size()
+                avg_ops_per_day = daily_ops.mean()
+                st.metric("Average Operations/Day", f"{avg_ops_per_day:.1f}")
+                
+                # Show daily distribution
+                daily_dist = daily_ops.value_counts().sort_index()
+                st.bar_chart(daily_dist)
+            
+            with col2:
+                st.write("**Drawdown Analysis**")
+                dd_df = calculate_drawdown(filtered_df, portfolio_size=50000)
+                max_drawdown = dd_df['drawdown'].min()
+                max_drawdown_pct = dd_df['drawdown_percent'].min()
+                max_dd_date = dd_df.loc[dd_df['drawdown'].idxmin(), 'date'].strftime('%Y-%m-%d')
+                
+                st.metric("Max Drawdown", f"${max_drawdown:.2f}")
+                st.metric("Max Drawdown %", f"{max_drawdown_pct:.2f}%")
+                st.write(f"**Worst Date:** {max_dd_date}")
+                st.caption("*Based on $50k portfolio")
+            
+            with col3:
+                st.write("**Strategy Performance**")
+                strategy_performance = filtered_df.groupby('strategy').agg({
+                    'pnl': ['sum', 'count', 'mean']
+                }).round(2)
+                strategy_performance.columns = ['Total PnL', 'Operations', 'Avg PnL']
+                st.dataframe(strategy_performance, use_container_width=True)
+            
+            # Detailed Data Table
+            with st.expander("📝 View Detailed Trading Data"):
+                display_df = filtered_df.copy()
+                display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+                
+                st.dataframe(
+                    display_df[['date', 'asset', 'strategy', 'operation', 'direction', 
+                              'trigger_price', 'exit_price', 'position_size', 'pnl_percent', 'pnl']],
+                    use_container_width=True,
+                    height=400
+                )
+            
+            # Export functionality
+            st.subheader("💾 Export Data")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                csv_data = filtered_df.to_csv(index=False)
+                st.download_button(
+                    label="📄 Download Filtered Data as CSV",
+                    data=csv_data,
+                    file_name=f"trading_data_filtered_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
+            
+            with col2:
+                # Summary report
+                dd_df = calculate_drawdown(filtered_df, portfolio_size=50000)
+                max_drawdown = dd_df['drawdown'].min()
+                max_drawdown_pct = dd_df['drawdown_percent'].min()
+                
+                summary_data = {
+                    'Metric': ['Total Operations', 'Total PnL', 'Portfolio Return %', 'Win Rate', 'Profit Factor',
+                             'Average PnL/Trade', 'Max Drawdown', 'Max Drawdown %', 'Avg Operations/Day'],
+                    'Value': [total_operations, f"${total_pnl:.2f}", f"{portfolio_return_pct:.2f}%", 
+                            f"{win_rate:.1f}%", f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞",
+                            f"${avg_pnl_per_trade:.2f}", f"${max_drawdown:.2f}", 
+                            f"{max_drawdown_pct:.2f}%", f"{avg_ops_per_day:.1f}"]
+                }
+                summary_df = pd.DataFrame(summary_data)
+                summary_csv = summary_df.to_csv(index=False)
+                
+                st.download_button(
+                    label="📊 Download Summary Report",
+                    data=summary_csv,
+                    file_name=f"trading_summary_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
+        
+        else:
+            st.warning("No data matches the selected filters. Please adjust your selections.")
+    
+    else:
+        # Show error message when file cannot be loaded
+        st.header("📊 Trading Strategy Dashboard")
+        st.error("❌ Unable to load the trading data file.")
+        st.info("""
+        **To fix this issue:**
+        1. Make sure `Backtesting_history.xlsx` is uploaded to your GitHub repository
+        2. Ensure the file contains a 'Trades' sheet with the proper data format
+        3. Redeploy your Streamlit app after uploading the file
+        """)
+        
+        with st.expander("📋 Expected Data Format"):
             st.write("""
             Your Excel file should contain a 'Trades' sheet with the following columns:
             - date, asset, strategy, operation, direction
@@ -217,230 +424,6 @@ def main():
             - pnl_percent, pnl, tracker
             - high, low, open, close
             """)
-    
-    # Main content area
-    if uploaded_file is not None:
-        # Parse the data
-        with st.spinner("Processing data..."):
-            df = parse_excel_data(uploaded_file)
-        
-        if df is not None and not df.empty:
-            # Filters section in main area
-            st.header("🔍 Filters")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # Month filter
-                available_months = sorted(df['month'].astype(str).unique())
-                selected_months = st.multiselect(
-                    "Select Month(s)",
-                    options=available_months,
-                    default=available_months,
-                    help="Filter data by specific months"
-                )
-            
-            with col2:
-                # Strategy filter
-                available_strategies = sorted(df['strategy'].unique())
-                selected_strategies = st.multiselect(
-                    "Select Strategy(ies)",
-                    options=available_strategies,
-                    default=available_strategies,
-                    help="Filter data by trading strategies"
-                )
-            
-            with col3:
-                # Asset filter
-                available_assets = sorted(df['asset'].unique())
-                selected_assets = st.multiselect(
-                    "Select Asset(s)",
-                    options=available_assets,
-                    default=available_assets,
-                    help="Filter data by specific assets"
-                )
-            
-            # Apply filters
-            filtered_df = df[
-                (df['month'].astype(str).isin(selected_months)) &
-                (df['strategy'].isin(selected_strategies)) &
-                (df['asset'].isin(selected_assets))
-            ].copy()
-            
-            st.markdown("---")
-            
-            if not filtered_df.empty:
-                # Key Metrics Row
-                st.header("📊 Key Performance Metrics")
-                col1, col2, col3, col4, col5 = st.columns(5)
-                
-                total_operations = len(filtered_df)
-                total_pnl = filtered_df['pnl'].sum()
-                avg_pnl_per_trade = filtered_df['pnl'].mean()
-                win_rate = (filtered_df['pnl'] > 0).mean() * 100
-                
-                # Calculate profit factor
-                winning_trades = filtered_df[filtered_df['pnl'] > 0]['pnl'].sum()
-                losing_trades = abs(filtered_df[filtered_df['pnl'] < 0]['pnl'].sum())
-                profit_factor = winning_trades / losing_trades if losing_trades > 0 else float('inf')
-                
-                # Calculate portfolio percentage return
-                portfolio_return_pct = (total_pnl / 50000) * 100
-                
-                with col1:
-                    st.metric(
-                        label="Total Operations",
-                        value=f"{total_operations:,}",
-                        help="Total number of trading operations"
-                    )
-                
-                with col2:
-                    st.metric(
-                        label="Total PnL",
-                        value=f"R${total_pnl:,.2f}",
-                        delta=f"{portfolio_return_pct:+.2f}%" if total_pnl != 0 else "0%",
-                        help="Total profit and loss with portfolio percentage"
-                    )
-                
-                with col3:
-                    st.metric(
-                        label="Average PnL/Trade",
-                        value=f"R${avg_pnl_per_trade:.2f}",
-                        help="Average profit per trade"
-                    )
-                
-                with col4:
-                    st.metric(
-                        label="Win Rate",
-                        value=f"{win_rate:.1f}%",
-                        help="Percentage of profitable trades"
-                    )
-                
-                with col5:
-                    st.metric(
-                        label="Profit Factor",
-                        value=f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞",
-                        help="Ratio of gross profits to gross losses"
-                    )
-                
-                st.markdown("---")
-                
-                # Charts Row
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    st.subheader("📈 PnL Evolution & Drawdown")
-                    evolution_fig = create_evolution_chart(filtered_df)
-                    st.plotly_chart(evolution_fig, use_container_width=True)
-                
-                with col2:
-                    st.subheader("📅 Monthly Performance")
-                    monthly_fig = create_monthly_performance_chart(filtered_df)
-                    st.plotly_chart(monthly_fig, use_container_width=True)
-                
-                # Additional Analytics
-                st.subheader("📋 Detailed Analytics")
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.write("**Operations by Day**")
-                    daily_ops = filtered_df.groupby(filtered_df['date'].dt.date).size()
-                    avg_ops_per_day = daily_ops.mean()
-                    st.metric("Average Operations/Day", f"{avg_ops_per_day:.1f}")
-                    
-                    # Show daily distribution
-                    daily_dist = daily_ops.value_counts().sort_index()
-                    st.bar_chart(daily_dist)
-                
-                with col2:
-                    st.write("**Drawdown Analysis**")
-                    dd_df = calculate_drawdown(filtered_df)
-                    max_drawdown = dd_df['drawdown'].min()
-                    max_drawdown_pct = dd_df['drawdown_percent'].min()
-                    max_dd_date = dd_df.loc[dd_df['drawdown'].idxmin(), 'date'].strftime('%Y-%m-%d')
-                    
-                    st.metric("Max Drawdown", f"R${max_drawdown:.2f}")
-                    st.metric("Max Drawdown %", f"{max_drawdown_pct:.2f}%")
-                    st.write(f"**Worst Date:** {max_dd_date}")
-                
-                with col3:
-                    st.write("**Strategy Performance**")
-                    strategy_performance = filtered_df.groupby('strategy').agg({
-                        'pnl': ['sum', 'count', 'mean']
-                    }).round(2)
-                    strategy_performance.columns = ['Total PnL', 'Operations', 'Avg PnL']
-                    st.dataframe(strategy_performance, use_container_width=True)
-                
-                # Detailed Data Table
-                with st.expander("📝 View Detailed Trading Data"):
-                    display_df = filtered_df.copy()
-                    display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
-                    
-                    st.dataframe(
-                        display_df[['date', 'asset', 'strategy', 'operation', 'direction', 
-                                  'trigger_price', 'exit_price', 'position_size', 'pnl_percent', 'pnl']],
-                        use_container_width=True,
-                        height=400
-                    )
-                
-                # Export functionality
-                st.subheader("💾 Export Data")
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    csv_data = filtered_df.to_csv(index=False)
-                    st.download_button(
-                        label="📄 Download Filtered Data as CSV",
-                        data=csv_data,
-                        file_name=f"trading_data_filtered_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv"
-                    )
-                
-                with col2:
-                    # Summary report
-                    summary_data = {
-                        'Metric': ['Total Operations', 'Total PnL', 'Win Rate', 'Average PnL/Trade', 
-                                 'Max Drawdown', 'Max Drawdown %', 'Avg Operations/Day'],
-                        'Value': [total_operations, f"${total_pnl:.2f}", f"{win_rate:.1f}%", 
-                                f"R${avg_pnl_per_trade:.2f}", f"R${max_drawdown:.2f}", 
-                                f"{max_drawdown_pct:.2f}%", f"{avg_ops_per_day:.1f}"]
-                    }
-                    summary_df = pd.DataFrame(summary_data)
-                    summary_csv = summary_df.to_csv(index=False)
-                    
-                    st.download_button(
-                        label="📊 Download Summary Report",
-                        data=summary_csv,
-                        file_name=f"trading_summary_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv"
-                    )
-            
-            else:
-                st.warning("No data matches the selected filters. Please adjust your selections.")
-        
-        else:
-            st.error("Unable to parse the uploaded file. Please check the file format.")
-    
-    else:
-        # Show welcome message when no file is uploaded
-        st.header("📊 Welcome to Your Trading Dashboard")
-        st.write("""
-        This dashboard helps you analyze your trading performance with comprehensive metrics and visualizations.
-        
-        **Features:**
-        - 📈 PnL evolution and drawdown analysis
-        - 📅 Monthly performance tracking  
-        - 🔍 Advanced filtering by month, strategy, and asset
-        - 📊 Key performance metrics and win rate analysis
-        - 💾 Data export capabilities
-        
-        **To get started:**
-        1. Upload your Excel file using the sidebar
-        2. Use the filters to analyze specific periods or strategies
-        3. Explore the interactive charts and metrics
-        """)
-        
-        st.info("👈 Upload your Excel file in the sidebar to begin analysis")
 
 if __name__ == "__main__":
     main()
