@@ -84,17 +84,22 @@ def parse_excel_data(uploaded_file):
         st.error(f"Error parsing file: {str(e)}")
         return None
 
-def calculate_drawdown(df):
-    """Calculate drawdown based on cumulative PnL"""
+def calculate_drawdown(df, portfolio_size=50000):
+    """Calculate drawdown based on cumulative PnL with 50k portfolio base"""
     df_sorted = df.sort_values('date').copy()
     df_sorted['cumulative_pnl'] = df_sorted['pnl'].cumsum()
     
-    # Calculate running maximum (peak)
-    df_sorted['peak'] = df_sorted['cumulative_pnl'].expanding().max()
+    # Calculate portfolio value (starting at 50k + cumulative PnL)
+    df_sorted['portfolio_value'] = portfolio_size + df_sorted['cumulative_pnl']
+    
+    # Calculate running maximum (peak) of portfolio value
+    df_sorted['peak_portfolio'] = df_sorted['portfolio_value'].expanding().max()
     
     # Calculate drawdown as the difference from peak
-    df_sorted['drawdown'] = df_sorted['cumulative_pnl'] - df_sorted['peak']
-    df_sorted['drawdown_percent'] = (df_sorted['drawdown'] / df_sorted['peak'].abs()) * 100
+    df_sorted['drawdown'] = df_sorted['portfolio_value'] - df_sorted['peak_portfolio']
+    
+    # Calculate drawdown percentage based on peak portfolio value
+    df_sorted['drawdown_percent'] = (df_sorted['drawdown'] / df_sorted['peak_portfolio']) * 100
     
     # Handle division by zero
     df_sorted['drawdown_percent'] = df_sorted['drawdown_percent'].fillna(0)
@@ -266,12 +271,20 @@ def main():
             if not filtered_df.empty:
                 # Key Metrics Row
                 st.header("📊 Key Performance Metrics")
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3, col4, col5 = st.columns(5)
                 
                 total_operations = len(filtered_df)
                 total_pnl = filtered_df['pnl'].sum()
                 avg_pnl_per_trade = filtered_df['pnl'].mean()
                 win_rate = (filtered_df['pnl'] > 0).mean() * 100
+                
+                # Calculate profit factor
+                winning_trades = filtered_df[filtered_df['pnl'] > 0]['pnl'].sum()
+                losing_trades = abs(filtered_df[filtered_df['pnl'] < 0]['pnl'].sum())
+                profit_factor = winning_trades / losing_trades if losing_trades > 0 else float('inf')
+                
+                # Calculate portfolio percentage return
+                portfolio_return_pct = (total_pnl / 50000) * 100
                 
                 with col1:
                     st.metric(
@@ -284,8 +297,8 @@ def main():
                     st.metric(
                         label="Total PnL",
                         value=f"${total_pnl:,.2f}",
-                        delta=f"{total_pnl/abs(total_pnl)*100:.1f}%" if total_pnl != 0 else "0%",
-                        help="Total profit and loss"
+                        delta=f"{portfolio_return_pct:+.2f}%" if total_pnl != 0 else "0%",
+                        help="Total profit and loss with portfolio percentage"
                     )
                 
                 with col3:
@@ -300,6 +313,13 @@ def main():
                         label="Win Rate",
                         value=f"{win_rate:.1f}%",
                         help="Percentage of profitable trades"
+                    )
+                
+                with col5:
+                    st.metric(
+                        label="Profit Factor",
+                        value=f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞",
+                        help="Ratio of gross profits to gross losses"
                     )
                 
                 st.markdown("---")
