@@ -296,7 +296,7 @@ def main():
                 with col2:
                     st.metric(
                         label="Total PnL",
-                        value=f"${total_pnl:,.2f}",
+                        value=f"R${total_pnl:,.2f}",
                         delta=f"{portfolio_return_pct:+.2f}%" if total_pnl != 0 else "0%",
                         help="Total profit and loss with portfolio percentage"
                     )
@@ -304,7 +304,7 @@ def main():
                 with col3:
                     st.metric(
                         label="Average PnL/Trade",
-                        value=f"${avg_pnl_per_trade:.2f}",
+                        value=f"R${avg_pnl_per_trade:.2f}",
                         help="Average profit per trade"
                     )
                 
@@ -359,7 +359,7 @@ def main():
                     max_drawdown_pct = dd_df['drawdown_percent'].min()
                     max_dd_date = dd_df.loc[dd_df['drawdown'].idxmin(), 'date'].strftime('%Y-%m-%d')
                     
-                    st.metric("Max Drawdown", f"${max_drawdown:.2f}")
+                    st.metric("Max Drawdown", f"R${max_drawdown:.2f}")
                     st.metric("Max Drawdown %", f"{max_drawdown_pct:.2f}%")
                     st.write(f"**Worst Date:** {max_dd_date}")
                 
@@ -402,7 +402,7 @@ def main():
                         'Metric': ['Total Operations', 'Total PnL', 'Win Rate', 'Average PnL/Trade', 
                                  'Max Drawdown', 'Max Drawdown %', 'Avg Operations/Day'],
                         'Value': [total_operations, f"${total_pnl:.2f}", f"{win_rate:.1f}%", 
-                                f"${avg_pnl_per_trade:.2f}", f"${max_drawdown:.2f}", 
+                                f"R${avg_pnl_per_trade:.2f}", f"R${max_drawdown:.2f}", 
                                 f"{max_drawdown_pct:.2f}%", f"{avg_ops_per_day:.1f}"]
                     }
                     summary_df = pd.DataFrame(summary_data)
