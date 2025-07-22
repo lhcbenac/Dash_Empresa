@@ -189,7 +189,7 @@ def main():
     st.title("📈 Trading Strategy Dashboard")
     st.markdown("---")
     
-    # Sidebar
+    # Sidebar - Only file upload
     with st.sidebar:
         st.header("📁 File Upload")
         uploaded_file = st.file_uploader(
@@ -200,14 +200,31 @@ def main():
         
         if uploaded_file is not None:
             st.success("File uploaded successfully!")
+        else:
+            st.info("Please upload an Excel file to begin analysis.")
             
-            # Parse the data
-            with st.spinner("Processing data..."):
-                df = parse_excel_data(uploaded_file)
+            # Show sample data format
+            st.subheader("📋 Expected Data Format")
+            st.write("""
+            Your Excel file should contain a 'Trades' sheet with the following columns:
+            - date, asset, strategy, operation, direction
+            - trigger_price, exit_price, position_size
+            - pnl_percent, pnl, tracker
+            - high, low, open, close
+            """)
+    
+    # Main content area
+    if uploaded_file is not None:
+        # Parse the data
+        with st.spinner("Processing data..."):
+            df = parse_excel_data(uploaded_file)
+        
+        if df is not None and not df.empty:
+            # Filters section in main area
+            st.header("🔍 Filters")
+            col1, col2, col3 = st.columns(3)
             
-            if df is not None and not df.empty:
-                st.header("🔍 Filters")
-                
+            with col1:
                 # Month filter
                 available_months = sorted(df['month'].astype(str).unique())
                 selected_months = st.multiselect(
@@ -216,7 +233,8 @@ def main():
                     default=available_months,
                     help="Filter data by specific months"
                 )
-                
+            
+            with col2:
                 # Strategy filter
                 available_strategies = sorted(df['strategy'].unique())
                 selected_strategies = st.multiselect(
@@ -225,7 +243,8 @@ def main():
                     default=available_strategies,
                     help="Filter data by trading strategies"
                 )
-                
+            
+            with col3:
                 # Asset filter
                 available_assets = sorted(df['asset'].unique())
                 selected_assets = st.multiselect(
@@ -234,13 +253,15 @@ def main():
                     default=available_assets,
                     help="Filter data by specific assets"
                 )
-                
-                # Apply filters
-                filtered_df = df[
-                    (df['month'].astype(str).isin(selected_months)) &
-                    (df['strategy'].isin(selected_strategies)) &
-                    (df['asset'].isin(selected_assets))
-                ].copy()
+            
+            # Apply filters
+            filtered_df = df[
+                (df['month'].astype(str).isin(selected_months)) &
+                (df['strategy'].isin(selected_strategies)) &
+                (df['asset'].isin(selected_assets))
+            ].copy()
+            
+            st.markdown("---")
                 
                 if not filtered_df.empty:
                     # Main content
