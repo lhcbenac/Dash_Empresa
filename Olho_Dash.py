@@ -156,8 +156,8 @@ def create_evolution_chart(df):
     )
     
     fig.update_xaxes(title_text="Date", row=2, col=1)
-    fig.update_yaxes(title_text="PnL ($)", row=1, col=1)
-    fig.update_yaxes(title_text="Drawdown ($)", row=2, col=1)
+    fig.update_yaxes(title_text="PnL (R$)", row=1, col=1)
+    fig.update_yaxes(title_text="Drawdown (R$)", row=2, col=1)
     
     return fig
 
@@ -179,7 +179,7 @@ def create_monthly_performance_chart(df):
         y=monthly_stats['pnl'],
         marker_color=colors,
         name='Monthly PnL',
-        text=[f'${pnl:,.0f}<br>{ops} ops' for pnl, ops in 
+        text=[f'R${pnl:,.0f}<br>{ops} ops' for pnl, ops in 
               zip(monthly_stats['pnl'], monthly_stats['operations'])],
         textposition='auto'
     ))
@@ -187,7 +187,7 @@ def create_monthly_performance_chart(df):
     fig.update_layout(
         title='Monthly Performance',
         xaxis_title='Month',
-        yaxis_title='PnL ($)',
+        yaxis_title='PnL (R$)',
         height=400
     )
     
@@ -277,7 +277,7 @@ def main():
             with col2:
                 st.metric(
                     label="Total PnL",
-                    value=f"${total_pnl:,.2f}",
+                    value=f"R${total_pnl:,.2f}",
                     delta=f"{portfolio_return_pct:+.2f}%" if total_pnl != 0 else "0%",
                     help="Total profit and loss with portfolio percentage"
                 )
@@ -285,7 +285,7 @@ def main():
             with col3:
                 st.metric(
                     label="Average PnL/Trade",
-                    value=f"${avg_pnl_per_trade:.2f}",
+                    value=f"R${avg_pnl_per_trade:.2f}",
                     help="Average profit per trade"
                 )
             
@@ -340,10 +340,10 @@ def main():
                 max_drawdown_pct = dd_df['drawdown_percent'].min()
                 max_dd_date = dd_df.loc[dd_df['drawdown'].idxmin(), 'date'].strftime('%Y-%m-%d')
                 
-                st.metric("Max Drawdown", f"${max_drawdown:.2f}")
+                st.metric("Max Drawdown", f"R${max_drawdown:.2f}")
                 st.metric("Max Drawdown %", f"{max_drawdown_pct:.2f}%")
                 st.write(f"**Worst Date:** {max_dd_date}")
-                st.caption("*Based on $50k portfolio")
+                st.caption("*Based on R$50k portfolio")
             
             with col3:
                 st.write("**Strategy Performance**")
@@ -387,9 +387,9 @@ def main():
                 summary_data = {
                     'Metric': ['Total Operations', 'Total PnL', 'Portfolio Return %', 'Win Rate', 'Profit Factor',
                              'Average PnL/Trade', 'Max Drawdown', 'Max Drawdown %', 'Avg Operations/Day'],
-                    'Value': [total_operations, f"${total_pnl:.2f}", f"{portfolio_return_pct:.2f}%", 
+                    'Value': [total_operations, f"R${total_pnl:.2f}", f"{portfolio_return_pct:.2f}%", 
                             f"{win_rate:.1f}%", f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞",
-                            f"${avg_pnl_per_trade:.2f}", f"${max_drawdown:.2f}", 
+                            f"R${avg_pnl_per_trade:.2f}", f"R${max_drawdown:.2f}", 
                             f"{max_drawdown_pct:.2f}%", f"{avg_ops_per_day:.1f}"]
                 }
                 summary_df = pd.DataFrame(summary_data)
