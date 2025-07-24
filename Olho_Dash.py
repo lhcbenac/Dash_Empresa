@@ -127,6 +127,8 @@ def calculate_consecutive_streaks(df):
         'max_win_streak_pnl': max_win_streak_pnl,
         'max_loss_streak_pnl': max_loss_streak_pnl
     }
+
+def calculate_drawdown_analysis(df, portfolio_size=50000):
     """Calculate drawdown based on cumulative PnL with 50k portfolio base"""
     df_sorted = df.sort_values('date').copy()
     df_sorted['cumulative_pnl'] = df_sorted['pnl'].cumsum()
@@ -149,13 +151,16 @@ def calculate_consecutive_streaks(df):
     return df_sorted
 
 def create_evolution_chart(df):
-    """Create PnL evolution chart"""
+    """Create PnL evolution chart with drawdown"""
     df_chart = df.sort_values('date').copy()
     df_chart['cumulative_pnl'] = df_chart['pnl'].cumsum()
     
+    # Calculate drawdown data
+    df_dd = calculate_drawdown_analysis(df_chart, portfolio_size=50000)
+    
     fig = make_subplots(
         rows=2, cols=1,
-        subplot_titles=('Cumulative PnL Evolution', 'Drawdown'),
+        subplot_titles=('Cumulative PnL Evolution', 'Drawdown Analysis'),
         vertical_spacing=0.1,
         row_heights=[0.7, 0.3]
     )
@@ -173,8 +178,7 @@ def create_evolution_chart(df):
         row=1, col=1
     )
     
-    # Calculate and add drawdown with portfolio size parameter
-    df_dd = calculate_drawdown(df_chart, portfolio_size=50000)
+    # Add drawdown chart
     fig.add_trace(
         go.Scatter(
             x=df_dd['date'],
@@ -194,8 +198,8 @@ def create_evolution_chart(df):
     )
     
     fig.update_xaxes(title_text="Date", row=2, col=1)
-    fig.update_yaxes(title_text="PnL ($)", row=1, col=1)
-    fig.update_yaxes(title_text="Drawdown ($)", row=2, col=1)
+    fig.update_yaxes(title_text="PnL (R$)", row=1, col=1)
+    fig.update_yaxes(title_text="Drawdown (R$)", row=2, col=1)
     
     return fig
 
@@ -217,7 +221,7 @@ def create_monthly_performance_chart(df):
         y=monthly_stats['pnl'],
         marker_color=colors,
         name='Monthly PnL',
-        text=[f'${pnl:,.0f}<br>{ops} ops' for pnl, ops in 
+        text=[f'R${pnl:,.0f}<br>{ops} ops' for pnl, ops in 
               zip(monthly_stats['pnl'], monthly_stats['operations'])],
         textposition='auto'
     ))
@@ -225,7 +229,7 @@ def create_monthly_performance_chart(df):
     fig.update_layout(
         title='Monthly Performance',
         xaxis_title='Month',
-        yaxis_title='PnL ($)',
+        yaxis_title='PnL (R$)',
         height=400
     )
     
@@ -315,7 +319,7 @@ def main():
             with col2:
                 st.metric(
                     label="Total PnL",
-                    value=f"${total_pnl:,.2f}",
+                    value=f"R${total_pnl:,.2f}",
                     delta=f"{portfolio_return_pct:+.2f}%" if total_pnl != 0 else "0%",
                     help="Total profit and loss with portfolio percentage"
                 )
@@ -323,7 +327,7 @@ def main():
             with col3:
                 st.metric(
                     label="Average PnL/Trade",
-                    value=f"${avg_pnl_per_trade:.2f}",
+                    value=f"R${avg_pnl_per_trade:.2f}",
                     help="Average profit per trade"
                 )
             
@@ -369,7 +373,7 @@ def main():
             # Additional Analytics
             st.subheader("📋 Detailed Analytics")
             
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             
             with col1:
                 st.write("**Operations by Day**")
@@ -382,24 +386,31 @@ def main():
                 st.bar_chart(daily_dist)
             
             with col2:
-                st.write("**Drawdown Analysis**")
-                dd_df = calculate_drawdown(filtered_df, portfolio_size=50000)
+                st.write("**Drawdown & Consecutive Analysis**")
+                
+                # Calculate drawdown metrics
+                dd_df = calculate_drawdown_analysis(filtered_df, portfolio_size=50000)
                 max_drawdown = dd_df['drawdown'].min()
                 max_drawdown_pct = dd_df['drawdown_percent'].min()
                 max_dd_date = dd_df.loc[dd_df['drawdown'].idxmin(), 'date'].strftime('%Y-%m-%d')
                 
-                st.metric("Max Drawdown", f"${max_drawdown:.2f}")
-                st.metric("Max Drawdown %", f"{max_drawdown_pct:.2f}%")
-                st.write(f"**Worst Date:** {max_dd_date}")
-                st.caption("*Based on $50k portfolio")
-            
-            with col3:
-                st.write("**Strategy Performance**")
-                strategy_performance = filtered_df.groupby('strategy').agg({
-                    'pnl': ['sum', 'count', 'mean']
-                }).round(2)
-                strategy_performance.columns = ['Total PnL', 'Operations', 'Avg PnL']
-                st.dataframe(strategy_performance, use_container_width=True)
+                # Calculate consecutive streaks
+                streak_info = calculate_consecutive_streaks(filtered_df)
+                
+                col2_1, col2_2 = st.columns(2)
+                
+                with col2_1:
+                    st.metric("Max Drawdown", f"R${max_drawdown:.2f}")
+                    st.metric("Max Drawdown %", f"{max_drawdown_pct:.2f}%")
+                    st.write(f"**Worst Date:** {max_dd_date}")
+                
+                with col2_2:
+                    st.metric("Max Winning Streak", f"{streak_info['max_winning_streak']} trades")
+                    st.metric("Max Losing Streak", f"{streak_info['max_losing_streak']} trades")
+                    st.write(f"**Win Streak PnL:** R${streak_info['max_win_streak_pnl']:.2f}")
+                    st.write(f"**Loss Streak PnL:** R${streak_info['max_loss_streak_pnl']:.2f}")
+                
+                st.caption("*Based on R$50k portfolio")
             
             # Detailed Data Table
             with st.expander("📝 View Detailed Trading Data"):
@@ -427,18 +438,22 @@ def main():
                 )
             
             with col2:
-                # Summary report
-                dd_df = calculate_drawdown(filtered_df, portfolio_size=50000)
+                # Summary report with all metrics
+                dd_df = calculate_drawdown_analysis(filtered_df, portfolio_size=50000)
                 max_drawdown = dd_df['drawdown'].min()
                 max_drawdown_pct = dd_df['drawdown_percent'].min()
+                streak_info = calculate_consecutive_streaks(filtered_df)
                 
                 summary_data = {
                     'Metric': ['Total Operations', 'Total PnL', 'Portfolio Return %', 'Win Rate', 'Profit Factor',
-                             'Average PnL/Trade', 'Max Drawdown', 'Max Drawdown %', 'Avg Operations/Day'],
-                    'Value': [total_operations, f"${total_pnl:.2f}", f"{portfolio_return_pct:.2f}%", 
+                             'Average PnL/Trade', 'Max Drawdown', 'Max Drawdown %', 'Avg Operations/Day',
+                             'Max Winning Streak', 'Max Losing Streak', 'Win Streak PnL', 'Loss Streak PnL'],
+                    'Value': [total_operations, f"R${total_pnl:.2f}", f"{portfolio_return_pct:.2f}%", 
                             f"{win_rate:.1f}%", f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞",
-                            f"${avg_pnl_per_trade:.2f}", f"${max_drawdown:.2f}", 
-                            f"{max_drawdown_pct:.2f}%", f"{avg_ops_per_day:.1f}"]
+                            f"R${avg_pnl_per_trade:.2f}", f"R${max_drawdown:.2f}", 
+                            f"{max_drawdown_pct:.2f}%", f"{avg_ops_per_day:.1f}",
+                            f"{streak_info['max_winning_streak']} trades", f"{streak_info['max_losing_streak']} trades",
+                            f"R${streak_info['max_win_streak_pnl']:.2f}", f"R${streak_info['max_loss_streak_pnl']:.2f}"]
                 }
                 summary_df = pd.DataFrame(summary_data)
                 summary_csv = summary_df.to_csv(index=False)
