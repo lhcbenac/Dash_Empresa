@@ -173,8 +173,8 @@ def create_evolution_chart(df):
         row=1, col=1
     )
     
-    # Calculate and add drawdown
-    df_dd = calculate_drawdown(df_chart)
+    # Calculate and add drawdown with portfolio size parameter
+    df_dd = calculate_drawdown(df_chart, portfolio_size=50000)
     fig.add_trace(
         go.Scatter(
             x=df_dd['date'],
