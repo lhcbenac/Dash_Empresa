@@ -88,7 +88,45 @@ def load_data_from_file():
         st.error(f"❌ Error loading data: {str(e)}")
         return None
 
-def calculate_drawdown(df, portfolio_size=50000):
+def calculate_consecutive_streaks(df):
+    """Calculate the longest consecutive winning and losing streaks"""
+    df_sorted = df.sort_values('date').copy()
+    df_sorted['is_win'] = df_sorted['pnl'] > 0
+    
+    # Calculate streaks
+    df_sorted['streak_group'] = (df_sorted['is_win'] != df_sorted['is_win'].shift()).cumsum()
+    
+    streak_summary = df_sorted.groupby('streak_group').agg({
+        'is_win': 'first',
+        'pnl': ['count', 'sum']
+    }).reset_index()
+    
+    streak_summary.columns = ['streak_group', 'is_win', 'count', 'total_pnl']
+    
+    # Find longest winning and losing streaks
+    winning_streaks = streak_summary[streak_summary['is_win'] == True]
+    losing_streaks = streak_summary[streak_summary['is_win'] == False]
+    
+    max_winning_streak = winning_streaks['count'].max() if not winning_streaks.empty else 0
+    max_losing_streak = losing_streaks['count'].max() if not losing_streaks.empty else 0
+    
+    # Get the PnL for these streaks
+    if not winning_streaks.empty:
+        max_win_streak_pnl = winning_streaks.loc[winning_streaks['count'].idxmax(), 'total_pnl']
+    else:
+        max_win_streak_pnl = 0
+        
+    if not losing_streaks.empty:
+        max_loss_streak_pnl = losing_streaks.loc[losing_streaks['count'].idxmax(), 'total_pnl']
+    else:
+        max_loss_streak_pnl = 0
+    
+    return {
+        'max_winning_streak': max_winning_streak,
+        'max_losing_streak': max_losing_streak,
+        'max_win_streak_pnl': max_win_streak_pnl,
+        'max_loss_streak_pnl': max_loss_streak_pnl
+    }
     """Calculate drawdown based on cumulative PnL with 50k portfolio base"""
     df_sorted = df.sort_values('date').copy()
     df_sorted['cumulative_pnl'] = df_sorted['pnl'].cumsum()
@@ -156,8 +194,8 @@ def create_evolution_chart(df):
     )
     
     fig.update_xaxes(title_text="Date", row=2, col=1)
-    fig.update_yaxes(title_text="PnL (R$)", row=1, col=1)
-    fig.update_yaxes(title_text="Drawdown (R$)", row=2, col=1)
+    fig.update_yaxes(title_text="PnL ($)", row=1, col=1)
+    fig.update_yaxes(title_text="Drawdown ($)", row=2, col=1)
     
     return fig
 
@@ -179,7 +217,7 @@ def create_monthly_performance_chart(df):
         y=monthly_stats['pnl'],
         marker_color=colors,
         name='Monthly PnL',
-        text=[f'R${pnl:,.0f}<br>{ops} ops' for pnl, ops in 
+        text=[f'${pnl:,.0f}<br>{ops} ops' for pnl, ops in 
               zip(monthly_stats['pnl'], monthly_stats['operations'])],
         textposition='auto'
     ))
@@ -187,7 +225,7 @@ def create_monthly_performance_chart(df):
     fig.update_layout(
         title='Monthly Performance',
         xaxis_title='Month',
-        yaxis_title='PnL (R$)',
+        yaxis_title='PnL ($)',
         height=400
     )
     
@@ -277,7 +315,7 @@ def main():
             with col2:
                 st.metric(
                     label="Total PnL",
-                    value=f"R${total_pnl:,.2f}",
+                    value=f"${total_pnl:,.2f}",
                     delta=f"{portfolio_return_pct:+.2f}%" if total_pnl != 0 else "0%",
                     help="Total profit and loss with portfolio percentage"
                 )
@@ -285,7 +323,7 @@ def main():
             with col3:
                 st.metric(
                     label="Average PnL/Trade",
-                    value=f"R${avg_pnl_per_trade:.2f}",
+                    value=f"${avg_pnl_per_trade:.2f}",
                     help="Average profit per trade"
                 )
             
@@ -305,13 +343,23 @@ def main():
             
             st.markdown("---")
             
-            # Charts Row
-            col1, col2 = st.columns([2, 1])
+            # PnL Evolution & Drawdown Chart - Full Width
+            st.subheader("📈 PnL Evolution & Drawdown Analysis")
+            evolution_fig = create_evolution_chart(filtered_df)
+            st.plotly_chart(evolution_fig, use_container_width=True)
+            
+            st.markdown("---")
+            
+            # Charts Row - Strategy Performance and Monthly Performance Side by Side
+            col1, col2 = st.columns(2)
             
             with col1:
-                st.subheader("📈 PnL Evolution & Drawdown")
-                evolution_fig = create_evolution_chart(filtered_df)
-                st.plotly_chart(evolution_fig, use_container_width=True)
+                st.subheader("📊 Strategy Performance")
+                strategy_performance = filtered_df.groupby('strategy').agg({
+                    'pnl': ['sum', 'count', 'mean']
+                }).round(2)
+                strategy_performance.columns = ['Total PnL (R$)', 'Operations', 'Avg PnL (R$)']
+                st.dataframe(strategy_performance, use_container_width=True)
             
             with col2:
                 st.subheader("📅 Monthly Performance")
@@ -340,10 +388,10 @@ def main():
                 max_drawdown_pct = dd_df['drawdown_percent'].min()
                 max_dd_date = dd_df.loc[dd_df['drawdown'].idxmin(), 'date'].strftime('%Y-%m-%d')
                 
-                st.metric("Max Drawdown", f"R${max_drawdown:.2f}")
+                st.metric("Max Drawdown", f"${max_drawdown:.2f}")
                 st.metric("Max Drawdown %", f"{max_drawdown_pct:.2f}%")
                 st.write(f"**Worst Date:** {max_dd_date}")
-                st.caption("*Based on R$50k portfolio")
+                st.caption("*Based on $50k portfolio")
             
             with col3:
                 st.write("**Strategy Performance**")
@@ -387,9 +435,9 @@ def main():
                 summary_data = {
                     'Metric': ['Total Operations', 'Total PnL', 'Portfolio Return %', 'Win Rate', 'Profit Factor',
                              'Average PnL/Trade', 'Max Drawdown', 'Max Drawdown %', 'Avg Operations/Day'],
-                    'Value': [total_operations, f"R${total_pnl:.2f}", f"{portfolio_return_pct:.2f}%", 
+                    'Value': [total_operations, f"${total_pnl:.2f}", f"{portfolio_return_pct:.2f}%", 
                             f"{win_rate:.1f}%", f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞",
-                            f"R${avg_pnl_per_trade:.2f}", f"R${max_drawdown:.2f}", 
+                            f"${avg_pnl_per_trade:.2f}", f"${max_drawdown:.2f}", 
                             f"{max_drawdown_pct:.2f}%", f"{avg_ops_per_day:.1f}"]
                 }
                 summary_df = pd.DataFrame(summary_data)
