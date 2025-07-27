@@ -39,11 +39,29 @@ st.markdown("""
 def load_data():
     """Load and preprocess the backtesting data"""
     try:
-        # Load the CSV file
-        df_raw = pd.read_csv('Backtesting2_history.csv')
+        # Load the CSV file with more explicit parameters
+        df_raw = pd.read_csv('Backtesting2_history.csv', 
+                           encoding='utf-8',  # Try different encodings if needed
+                           low_memory=False)  # Don't infer dtypes chunk by chunk
         
         # Debug: Show total rows before filtering
         st.info(f"📊 Total rows in CSV file: {len(df_raw)}")
+        
+        # Show date range in raw data
+        if 'Loop_Date' in df_raw.columns:
+            try:
+                raw_dates = pd.to_datetime(df_raw['Loop_Date'], errors='coerce')
+                valid_dates = raw_dates.dropna()
+                if len(valid_dates) > 0:
+                    st.info(f"📅 Raw date range: {valid_dates.min()} to {valid_dates.max()}")
+                    
+                    # Show year distribution
+                    years = valid_dates.dt.year.value_counts().sort_index()
+                    st.info(f"📅 Years in data: {dict(years)}")
+                else:
+                    st.warning("⚠️ No valid dates found in Loop_Date column")
+            except Exception as date_error:
+                st.warning(f"⚠️ Error parsing dates: {date_error}")
         
         # Check if Operou_Dia column exists and its values
         if 'Operou_Dia' not in df_raw.columns:
@@ -57,29 +75,55 @@ def load_data():
         
         # Filter only rows where Operou_Dia = True
         # Handle different possible representations of True
-        df = df_raw[
+        mask = (
             (df_raw['Operou_Dia'] == True) | 
             (df_raw['Operou_Dia'] == 'True') | 
             (df_raw['Operou_Dia'] == 1) |
-            (df_raw['Operou_Dia'] == '1')
-        ].copy()
+            (df_raw['Operou_Dia'] == '1') |
+            (df_raw['Operou_Dia'].astype(str).str.upper() == 'TRUE')
+        )
+        
+        df = df_raw[mask].copy()
         
         st.info(f"📊 Rows after filtering Operou_Dia = True: {len(df)}")
         
         if len(df) == 0:
             st.warning("⚠️ No rows found where Operou_Dia = True. Check your data.")
+            st.write("Sample Operou_Dia values:", df_raw['Operou_Dia'].head(20).tolist())
             return None
         
         # Convert Loop_Date to datetime and normalize (remove time component)
-        df['Loop_Date'] = pd.to_datetime(df['Loop_Date']).dt.date
-        df['Loop_Date'] = pd.to_datetime(df['Loop_Date'])  # Convert back to datetime for consistency
+        try:
+            df['Loop_Date'] = pd.to_datetime(df['Loop_Date'], errors='coerce')
+            
+            # Remove rows with invalid dates
+            invalid_dates = df['Loop_Date'].isna().sum()
+            if invalid_dates > 0:
+                st.warning(f"⚠️ Found {invalid_dates} rows with invalid dates - removing them")
+                df = df.dropna(subset=['Loop_Date'])
+            
+            # Normalize dates (remove time component)
+            df['Loop_Date'] = df['Loop_Date'].dt.date
+            df['Loop_Date'] = pd.to_datetime(df['Loop_Date'])  # Convert back to datetime for consistency
+            
+        except Exception as date_error:
+            st.error(f"❌ Error processing dates: {date_error}")
+            return None
         
         # Sort by date
         df = df.sort_values('Loop_Date').reset_index(drop=True)
         
+        # Final check on date range
+        if len(df) > 0:
+            st.success(f"✅ Successfully loaded {len(df)} records from {df['Loop_Date'].min().date()} to {df['Loop_Date'].max().date()}")
+        
         return df
+        
     except FileNotFoundError:
         st.error("❌ File 'Backtesting2_history.csv' not found. Please upload the file to the same directory.")
+        return None
+    except UnicodeDecodeError:
+        st.error("❌ Error reading CSV file. Try saving it with UTF-8 encoding.")
         return None
     except Exception as e:
         st.error(f"❌ Error loading data: {str(e)}")
@@ -202,6 +246,11 @@ def main():
     st.title("📈 Backtesting Dashboard")
     st.markdown("---")
     
+    # Add a button to clear cache
+    if st.button("🔄 Reload Data (Clear Cache)"):
+        st.cache_data.clear()
+        st.rerun()
+    
     # Load data
     df = load_data()
     
@@ -211,15 +260,38 @@ def main():
     
     # Debug information (can be removed later)
     with st.expander("🔍 Data Debug Info (Click to expand)"):
-        st.write(f"**Total rows in file:** {len(pd.read_csv('Backtesting2_history.csv')) if pd.read_csv else 'Unable to read'}")
+        try:
+            df_raw_debug = pd.read_csv('Backtesting2_history.csv', low_memory=False)
+            st.write(f"**Total rows in file:** {len(df_raw_debug)}")
+            
+            # Check years in raw data
+            if 'Loop_Date' in df_raw_debug.columns:
+                raw_dates = pd.to_datetime(df_raw_debug['Loop_Date'], errors='coerce')
+                if raw_dates.notna().any():
+                    years_raw = raw_dates.dt.year.value_counts().sort_index()
+                    st.write(f"**Years in raw CSV:** {dict(years_raw)}")
+                    
+                    # Check Operou_Dia by year
+                    df_raw_debug['Year'] = raw_dates.dt.year
+                    operou_by_year = df_raw_debug.groupby('Year')['Operou_Dia'].value_counts()
+                    st.write(f"**Operou_Dia by year:**")
+                    for (year, operou), count in operou_by_year.items():
+                        st.write(f"- {year} - {operou}: {count}")
+        except:
+            st.write("Could not read raw file for debugging")
+        
         st.write(f"**Rows with Operou_Dia = True:** {len(df)}")
         st.write(f"**Date range:** {df['Loop_Date'].min()} to {df['Loop_Date'].max()}")
         
-        # Show all available months in the data
+        # Show all available months in the filtered data
         all_months = df['Loop_Date'].dt.to_period('M').value_counts().sort_index()
         st.write(f"**Available months with trade counts:**")
         for month, count in all_months.items():
             st.write(f"- {month}: {count} trades")
+        
+        # Show years in filtered data
+        years_filtered = df['Loop_Date'].dt.year.value_counts().sort_index()
+        st.write(f"**Years in filtered data:** {dict(years_filtered)}")
         
         # Check for any issues with Operou_Dia column
         if 'Operou_Dia' in df.columns:
