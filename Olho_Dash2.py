@@ -242,12 +242,11 @@ def main():
         df_filtered['Gatilho_Dia'] = pd.to_numeric(df_filtered['Gatilho_Dia'], errors='coerce')
         df_filtered['PNL'] = pd.to_numeric(df_filtered['PNL'], errors='coerce')
         
-        # Calculate lot sizes (for display purposes only)
+        # Calculate lot sizes based on 50k / Gatilho_Dia
         df_filtered['Lot_Size'] = df_filtered['Gatilho_Dia'].apply(calculate_lot_size)
         
-        # PNL already represents the profit/loss from 50k capital
-        # So we use PNL directly for calculations
-        df_filtered['Daily_PNL'] = df_filtered['PNL'].fillna(0)
+        # Calculate actual PNL: PNL per unit × Lot Size
+        df_filtered['Daily_PNL'] = df_filtered['Lot_Size'] * df_filtered['PNL'].fillna(0)
         df_filtered['Cumulative_PNL'] = df_filtered['Daily_PNL'].cumsum()
         df_filtered['Cumulative_Balance'] = 50000 + df_filtered['Cumulative_PNL']
         
