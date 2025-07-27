@@ -61,13 +61,21 @@ def load_data():
 
 def calculate_lot_size(gatilho_value, initial_balance=50000):
     """Calculate lot size based on gatilho value"""
-    if pd.isna(gatilho_value) or gatilho_value == 0:
+    # Handle NaN, None, zero, or negative values
+    if pd.isna(gatilho_value) or gatilho_value is None or gatilho_value <= 0:
         return 100
     
-    lot_size = initial_balance / gatilho_value
-    # Round down to nearest 100, minimum 100
-    lot_size = max(100, math.floor(lot_size / 100) * 100)
-    return int(lot_size)
+    try:
+        # Convert to float to ensure numeric operation
+        gatilho_value = float(gatilho_value)
+        lot_size = initial_balance / gatilho_value
+        
+        # Round down to nearest 100, minimum 100
+        lot_size = max(100, math.floor(lot_size / 100) * 100)
+        return int(lot_size)
+    except (ValueError, TypeError, ZeroDivisionError):
+        # Return default value if any error occurs
+        return 100
 
 def calculate_drawdown(cumulative_pnl):
     """Calculate drawdown statistics"""
@@ -174,6 +182,19 @@ def main():
         st.warning("⚠️ No data available. Please check your data file.")
         return
     
+    # Debug information (can be removed later)
+    with st.expander("🔍 Data Debug Info (Click to expand)"):
+        st.write(f"**Total rows loaded:** {len(df)}")
+        st.write(f"**Date range:** {df['Loop_Date'].min()} to {df['Loop_Date'].max()}")
+        st.write(f"**Gatilho column info:**")
+        st.write(f"- Non-null values: {df['Gatilho'].notna().sum()}")
+        st.write(f"- Zero values: {(df['Gatilho'] == 0).sum()}")
+        st.write(f"- Negative values: {(df['Gatilho'] < 0).sum()}")
+        st.write(f"**PNL column info:**")
+        st.write(f"- Non-null values: {df['PNL'].notna().sum()}")
+        st.write(f"**Sample data:**")
+        st.dataframe(df[['Loop_Date', 'Ativo', 'Gatilho', 'PNL', 'Operou_Dia']].head())
+    
     # Sidebar filters
     st.sidebar.header("🔍 Filters")
     
@@ -203,11 +224,24 @@ def main():
         st.warning("⚠️ No data available for the selected filters.")
         return
     
-    # Calculate lot sizes and PNL
-    df_filtered['Lot_Size'] = df_filtered['Gatilho'].apply(calculate_lot_size)
-    df_filtered['Calculated_PNL'] = df_filtered['Lot_Size'] * df_filtered['PNL']
-    df_filtered['Cumulative_PNL'] = df_filtered['Calculated_PNL'].cumsum()
-    df_filtered['Cumulative_Balance'] = 50000 + df_filtered['Cumulative_PNL']
+    # Calculate lot sizes and PNL with error handling
+    try:
+        # Clean the Gatilho column first
+        df_filtered['Gatilho'] = pd.to_numeric(df_filtered['Gatilho'], errors='coerce')
+        df_filtered['PNL'] = pd.to_numeric(df_filtered['PNL'], errors='coerce')
+        
+        # Calculate lot sizes
+        df_filtered['Lot_Size'] = df_filtered['Gatilho'].apply(calculate_lot_size)
+        
+        # Calculate PNL (handle NaN values)
+        df_filtered['Calculated_PNL'] = df_filtered['Lot_Size'] * df_filtered['PNL'].fillna(0)
+        df_filtered['Cumulative_PNL'] = df_filtered['Calculated_PNL'].cumsum()
+        df_filtered['Cumulative_Balance'] = 50000 + df_filtered['Cumulative_PNL']
+        
+    except Exception as e:
+        st.error(f"❌ Error calculating metrics: {str(e)}")
+        st.info("Please check your data for invalid values in Gatilho or PNL columns.")
+        return
     
     # Calculate drawdown
     drawdown_series, max_drawdown, max_drawdown_pct, peak_series = calculate_drawdown(df_filtered['Cumulative_Balance'])
