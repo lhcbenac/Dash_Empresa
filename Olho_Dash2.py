@@ -438,7 +438,7 @@ def main():
     # Additional Statistics
     st.header("📋 Detailed Statistics")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("💹 Trade Statistics")
@@ -458,8 +458,9 @@ def main():
         if avg_loss != 0:
             profit_factor = abs(avg_win * winning_trades) / abs(avg_loss * losing_trades)
             st.write(f"**Profit Factor:** {profit_factor:.2f}")
-    
-    with col2:
+        
+        st.markdown("---")
+        
         st.subheader("📊 Risk Metrics")
         
         # Sharpe-like ratio (simplified)
@@ -481,8 +482,8 @@ def main():
         st.write(f"**Best Trade:** ${best_trade:,.2f}")
         st.write(f"**Worst Trade:** ${worst_trade:,.2f}")
     
-    with col3:
-        st.subheader("🏆 Asset Performance Rankings")
+    with col2:
+        st.subheader("🥇 Top 5 Best Assets")
         
         # Calculate performance by Ativo
         if len(df_filtered) > 0:
@@ -496,18 +497,29 @@ def main():
             ativo_performance = ativo_performance.sort_values('Total_PNL', ascending=False)
             
             # Top 5 Best Performers
-            st.write("**🥇 Top 5 Best Assets:**")
             top_5 = ativo_performance.head(5)
             for i, (ativo, data) in enumerate(top_5.iterrows(), 1):
-                st.write(f"{i}. **{ativo}**: ${data['Total_PNL']:,.2f} ({data['Trade_Count']:.0f} trades)")
+                st.write(f"**{i}. {ativo}**: ${data['Total_PNL']:,.2f}")
+                st.write(f"   💼 {data['Trade_Count']:.0f} trades | 📈 {data['Win_Rate']:.1f}% win rate")
             
-            st.write("---")
-            
+            if len(top_5) == 0:
+                st.write("No profitable assets found")
+        else:
+            st.write("No data available for rankings")
+        
+        st.markdown("---")
+        
+        st.subheader("📉 Top 5 Worst Assets")
+        
+        if len(df_filtered) > 0:
             # Top 5 Worst Performers
-            st.write("**📉 Top 5 Worst Assets:**")
             bottom_5 = ativo_performance.tail(5)
             for i, (ativo, data) in enumerate(bottom_5.iterrows(), 1):
-                st.write(f"{i}. **{ativo}**: ${data['Total_PNL']:,.2f} ({data['Trade_Count']:.0f} trades)")
+                st.write(f"**{i}. {ativo}**: ${data['Total_PNL']:,.2f}")
+                st.write(f"   💼 {data['Trade_Count']:.0f} trades | 📈 {data['Win_Rate']:.1f}% win rate")
+            
+            if len(bottom_5) == 0:
+                st.write("No losing assets found")
         else:
             st.write("No data available for asset rankings")
     
