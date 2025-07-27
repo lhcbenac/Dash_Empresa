@@ -420,6 +420,10 @@ def main():
         st.warning("⚠️ No data available for the selected filters.")
         return
     
+    if df_filtered.empty:
+        st.warning("⚠️ No data available for the selected filters.")
+        return
+    
     # Calculate lot sizes and PNL with error handling
     try:
         # Clean the Gatilho_Dia and PNL columns
