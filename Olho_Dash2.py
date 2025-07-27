@@ -110,12 +110,12 @@ def load_data():
             st.error(f"❌ Error processing dates: {date_error}")
             return None
         
-        # Sort by date
-        df = df.sort_values('Loop_Date').reset_index(drop=True)
+        # Sort by date (oldest to newest) - CRITICAL for proper cumulative calculations
+        df = df.sort_values('Loop_Date', ascending=True).reset_index(drop=True)
         
         # Final check on date range
         if len(df) > 0:
-            st.success(f"✅ Successfully loaded {len(df)} records from {df['Loop_Date'].min().date()} to {df['Loop_Date'].max().date()}")
+            st.success(f"✅ Successfully loaded {len(df)} records from {df['Loop_Date'].min().date()} to {df['Loop_Date'].max().date()} (sorted chronologically)")
         
         return df
         
