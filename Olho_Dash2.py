@@ -40,13 +40,39 @@ def load_data():
     """Load and preprocess the backtesting data"""
     try:
         # Load the CSV file
-        df = pd.read_csv('Backtesting2_history.csv')
+        df_raw = pd.read_csv('Backtesting2_history.csv')
+        
+        # Debug: Show total rows before filtering
+        st.info(f"📊 Total rows in CSV file: {len(df_raw)}")
+        
+        # Check if Operou_Dia column exists and its values
+        if 'Operou_Dia' not in df_raw.columns:
+            st.error("❌ Column 'Operou_Dia' not found in the CSV file.")
+            st.write("Available columns:", df_raw.columns.tolist())
+            return None
+        
+        # Show Operou_Dia value distribution
+        operou_dia_counts = df_raw['Operou_Dia'].value_counts()
+        st.info(f"📈 Operou_Dia distribution: {dict(operou_dia_counts)}")
         
         # Filter only rows where Operou_Dia = True
-        df = df[df['Operou_Dia'] == True].copy()
+        # Handle different possible representations of True
+        df = df_raw[
+            (df_raw['Operou_Dia'] == True) | 
+            (df_raw['Operou_Dia'] == 'True') | 
+            (df_raw['Operou_Dia'] == 1) |
+            (df_raw['Operou_Dia'] == '1')
+        ].copy()
         
-        # Convert Loop_Date to datetime
-        df['Loop_Date'] = pd.to_datetime(df['Loop_Date'])
+        st.info(f"📊 Rows after filtering Operou_Dia = True: {len(df)}")
+        
+        if len(df) == 0:
+            st.warning("⚠️ No rows found where Operou_Dia = True. Check your data.")
+            return None
+        
+        # Convert Loop_Date to datetime and normalize (remove time component)
+        df['Loop_Date'] = pd.to_datetime(df['Loop_Date']).dt.date
+        df['Loop_Date'] = pd.to_datetime(df['Loop_Date'])  # Convert back to datetime for consistency
         
         # Sort by date
         df = df.sort_values('Loop_Date').reset_index(drop=True)
@@ -57,6 +83,7 @@ def load_data():
         return None
     except Exception as e:
         st.error(f"❌ Error loading data: {str(e)}")
+        st.error(f"Error details: {type(e).__name__}")
         return None
 
 def calculate_lot_size(gatilho_dia_value, initial_balance=50000):
@@ -184,8 +211,22 @@ def main():
     
     # Debug information (can be removed later)
     with st.expander("🔍 Data Debug Info (Click to expand)"):
-        st.write(f"**Total rows loaded:** {len(df)}")
+        st.write(f"**Total rows in file:** {len(pd.read_csv('Backtesting2_history.csv')) if pd.read_csv else 'Unable to read'}")
+        st.write(f"**Rows with Operou_Dia = True:** {len(df)}")
         st.write(f"**Date range:** {df['Loop_Date'].min()} to {df['Loop_Date'].max()}")
+        
+        # Show all available months in the data
+        all_months = df['Loop_Date'].dt.to_period('M').value_counts().sort_index()
+        st.write(f"**Available months with trade counts:**")
+        for month, count in all_months.items():
+            st.write(f"- {month}: {count} trades")
+        
+        # Check for any issues with Operou_Dia column
+        if 'Operou_Dia' in df.columns:
+            operou_dia_values = df['Operou_Dia'].value_counts()
+            st.write(f"**Operou_Dia values in filtered data:**")
+            for value, count in operou_dia_values.items():
+                st.write(f"- {value}: {count}")
         
         st.write(f"**Gatilho_Dia column info:**")
         st.write(f"- Data type: {df['Gatilho_Dia'].dtype}")
@@ -205,7 +246,7 @@ def main():
         st.write(f"- Non-null values: {df['PNL'].notna().sum()}")
         
         st.write(f"**Sample data:**")
-        st.dataframe(df[['Loop_Date', 'Ativo', 'Gatilho_Dia', 'PNL', 'Operou_Dia']].head())
+        st.dataframe(df[['Loop_Date', 'Ativo', 'Gatilho_Dia', 'PNL', 'Operou_Dia']].head(10))
     
     # Sidebar filters
     st.sidebar.header("🔍 Filters")
