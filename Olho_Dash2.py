@@ -59,16 +59,16 @@ def load_data():
         st.error(f"❌ Error loading data: {str(e)}")
         return None
 
-def calculate_lot_size(gatilho_value, initial_balance=50000):
-    """Calculate lot size based on gatilho value"""
+def calculate_lot_size(gatilho_dia_value, initial_balance=50000):
+    """Calculate lot size based on gatilho_dia value"""
     # Handle NaN, None, zero, or negative values
-    if pd.isna(gatilho_value) or gatilho_value is None or gatilho_value <= 0:
+    if pd.isna(gatilho_dia_value) or gatilho_dia_value is None or gatilho_dia_value <= 0:
         return 100
     
     try:
         # Convert to float to ensure numeric operation
-        gatilho_value = float(gatilho_value)
-        lot_size = initial_balance / gatilho_value
+        gatilho_dia_value = float(gatilho_dia_value)
+        lot_size = initial_balance / gatilho_dia_value
         
         # Round down to nearest 100, minimum 100
         lot_size = max(100, math.floor(lot_size / 100) * 100)
@@ -186,14 +186,26 @@ def main():
     with st.expander("🔍 Data Debug Info (Click to expand)"):
         st.write(f"**Total rows loaded:** {len(df)}")
         st.write(f"**Date range:** {df['Loop_Date'].min()} to {df['Loop_Date'].max()}")
-        st.write(f"**Gatilho column info:**")
-        st.write(f"- Non-null values: {df['Gatilho'].notna().sum()}")
-        st.write(f"- Zero values: {(df['Gatilho'] == 0).sum()}")
-        st.write(f"- Negative values: {(df['Gatilho'] < 0).sum()}")
+        
+        st.write(f"**Gatilho_Dia column info:**")
+        st.write(f"- Data type: {df['Gatilho_Dia'].dtype}")
+        st.write(f"- Non-null values: {df['Gatilho_Dia'].notna().sum()}")
+        st.write(f"- Unique values: {df['Gatilho_Dia'].nunique()}")
+        st.write(f"- Sample values: {df['Gatilho_Dia'].head().tolist()}")
+        
+        # Try to convert to numeric and check for issues
+        gatilho_numeric = pd.to_numeric(df['Gatilho_Dia'], errors='coerce')
+        st.write(f"- Values that can't be converted to numbers: {gatilho_numeric.isna().sum()}")
+        if gatilho_numeric.notna().any():
+            st.write(f"- Zero values (numeric): {(gatilho_numeric == 0).sum()}")
+            st.write(f"- Negative values (numeric): {(gatilho_numeric < 0).sum()}")
+        
         st.write(f"**PNL column info:**")
+        st.write(f"- Data type: {df['PNL'].dtype}")
         st.write(f"- Non-null values: {df['PNL'].notna().sum()}")
+        
         st.write(f"**Sample data:**")
-        st.dataframe(df[['Loop_Date', 'Ativo', 'Gatilho', 'PNL', 'Operou_Dia']].head())
+        st.dataframe(df[['Loop_Date', 'Ativo', 'Gatilho_Dia', 'PNL', 'Operou_Dia']].head())
     
     # Sidebar filters
     st.sidebar.header("🔍 Filters")
@@ -226,12 +238,12 @@ def main():
     
     # Calculate lot sizes and PNL with error handling
     try:
-        # Clean the Gatilho column first
-        df_filtered['Gatilho'] = pd.to_numeric(df_filtered['Gatilho'], errors='coerce')
+        # Clean the Gatilho_Dia column first
+        df_filtered['Gatilho_Dia'] = pd.to_numeric(df_filtered['Gatilho_Dia'], errors='coerce')
         df_filtered['PNL'] = pd.to_numeric(df_filtered['PNL'], errors='coerce')
         
         # Calculate lot sizes
-        df_filtered['Lot_Size'] = df_filtered['Gatilho'].apply(calculate_lot_size)
+        df_filtered['Lot_Size'] = df_filtered['Gatilho_Dia'].apply(calculate_lot_size)
         
         # Calculate PNL (handle NaN values)
         df_filtered['Calculated_PNL'] = df_filtered['Lot_Size'] * df_filtered['PNL'].fillna(0)
@@ -240,7 +252,7 @@ def main():
         
     except Exception as e:
         st.error(f"❌ Error calculating metrics: {str(e)}")
-        st.info("Please check your data for invalid values in Gatilho or PNL columns.")
+        st.info("Please check your data for invalid values in Gatilho_Dia or PNL columns.")
         return
     
     # Calculate drawdown
@@ -356,7 +368,7 @@ def main():
     display_columns = st.multiselect(
         "Select columns to display:",
         options=df_filtered.columns.tolist(),
-        default=['Loop_Date', 'Ativo', 'Gatilho', 'Lot_Size', 'PNL', 'Calculated_PNL', 'Cumulative_Balance'],
+        default=['Loop_Date', 'Ativo', 'Gatilho_Dia', 'Lot_Size', 'PNL', 'Calculated_PNL', 'Cumulative_Balance'],
         help="Choose which columns to show in the trade list"
     )
     
@@ -367,7 +379,7 @@ def main():
         # Format numeric columns
         numeric_columns = display_df.select_dtypes(include=[np.number]).columns
         for col in numeric_columns:
-            if col in ['Cumulative_Balance', 'Calculated_PNL', 'Gatilho']:
+            if col in ['Cumulative_Balance', 'Calculated_PNL', 'Gatilho_Dia']:
                 display_df[col] = display_df[col].apply(lambda x: f"${x:,.2f}" if pd.notna(x) else "")
             elif col == 'Lot_Size':
                 display_df[col] = display_df[col].apply(lambda x: f"{x:,}" if pd.notna(x) else "")
