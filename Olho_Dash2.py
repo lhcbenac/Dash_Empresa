@@ -499,8 +499,7 @@ def main():
             # Top 5 Best Performers
             top_5 = ativo_performance.head(5)
             for i, (ativo, data) in enumerate(top_5.iterrows(), 1):
-                st.write(f"**{i}. {ativo}**: ${data['Total_PNL']:,.2f}")
-                st.write(f"   💼 {data['Trade_Count']:.0f} trades | 📈 {data['Win_Rate']:.1f}% win rate")
+                st.write(f"**{i}. {ativo}**: ${data['Total_PNL']:,.2f} 💼 {data['Trade_Count']:.0f} trades | 📈 {data['Win_Rate']:.1f}% win rate")
             
             if len(top_5) == 0:
                 st.write("No profitable assets found")
@@ -515,8 +514,7 @@ def main():
             # Top 5 Worst Performers
             bottom_5 = ativo_performance.tail(5)
             for i, (ativo, data) in enumerate(bottom_5.iterrows(), 1):
-                st.write(f"**{i}. {ativo}**: ${data['Total_PNL']:,.2f}")
-                st.write(f"   💼 {data['Trade_Count']:.0f} trades | 📈 {data['Win_Rate']:.1f}% win rate")
+                st.write(f"**{i}. {ativo}**: ${data['Total_PNL']:,.2f} 💼 {data['Trade_Count']:.0f} trades | 📈 {data['Win_Rate']:.1f}% win rate")
             
             if len(bottom_5) == 0:
                 st.write("No losing assets found")
