@@ -246,6 +246,64 @@ def main():
     st.title("📈 Backtesting Dashboard")
     st.markdown("---")
     
+    # Asset Performance Table
+    st.header("📊 Asset Performance Analysis")
+    
+    if len(df_filtered) > 0:
+        # Calculate comprehensive performance metrics by Ativo
+        ativo_stats = df_filtered.groupby('Ativo').agg({
+            'Daily_PNL': ['sum', 'count', 'mean', 'std'],
+            'PNL': [
+                lambda x: (x > 0).sum(),  # Winning trades
+                lambda x: (x < 0).sum(),  # Losing trades
+                lambda x: (x > 0).sum() / len(x) * 100,  # Win rate
+                'max',  # Best trade
+                'min'   # Worst trade
+            ]
+        }).round(2)
+        
+        # Flatten column names
+        ativo_stats.columns = [
+            'Total_PNL', 'Total_Trades', 'Avg_PNL', 'PNL_Std',
+            'Winning_Trades', 'Losing_Trades', 'Win_Rate', 'Best_Trade', 'Worst_Trade'
+        ]
+        
+        # Calculate additional metrics
+        ativo_stats['Profit_Factor'] = np.where(
+            ativo_stats['Losing_Trades'] > 0,
+            (ativo_stats['Winning_Trades'] * ativo_stats['Avg_PNL']) / abs(ativo_stats['Losing_Trades'] * ativo_stats['Avg_PNL']),
+            np.inf
+        )
+        
+        # Sort by total PNL
+        ativo_stats = ativo_stats.sort_values('Total_PNL', ascending=False)
+        
+        # Display the table
+        st.dataframe(
+            ativo_stats.style.format({
+                'Total_PNL': '${:,.2f}',
+                'Avg_PNL': '${:,.2f}',
+                'PNL_Std': '${:,.2f}',
+                'Win_Rate': '{:.1f}%',
+                'Best_Trade': '${:,.2f}',
+                'Worst_Trade': '${:,.2f}',
+                'Profit_Factor': '{:.2f}'
+            }).background_gradient(subset=['Total_PNL'], cmap='RdYlGn'),
+            use_container_width=True,
+            height=400
+        )
+        
+        # Add download button for asset performance
+        asset_excel_data = export_to_excel(ativo_stats.reset_index())
+        st.download_button(
+            label="📥 Export Asset Performance to Excel",
+            data=asset_excel_data,
+            file_name=f"asset_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    
+    st.markdown("---")
+    
     # Add a button to clear cache
     if st.button("🔄 Reload Data (Clear Cache)"):
         st.cache_data.clear()
@@ -338,12 +396,25 @@ def main():
         help="Filter data by specific months (YYYY-MM format)"
     )
     
-    # Filter data based on selected months
+    # Ativo filter
+    available_ativos = sorted(df['Ativo'].dropna().unique())
+    selected_ativos = st.sidebar.multiselect(
+        "Select Assets (Ativo)",
+        options=available_ativos,
+        default=available_ativos,
+        help="Filter data by specific assets"
+    )
+    
+    # Filter data based on selected months and ativos
+    df_filtered = df.copy()
+    
     if selected_months:
-        mask = df['Loop_Date'].dt.to_period('M').astype(str).isin(selected_months)
-        df_filtered = df[mask].copy()
-    else:
-        df_filtered = df.copy()
+        mask_months = df_filtered['Loop_Date'].dt.to_period('M').astype(str).isin(selected_months)
+        df_filtered = df_filtered[mask_months]
+    
+    if selected_ativos:
+        mask_ativos = df_filtered['Ativo'].isin(selected_ativos)
+        df_filtered = df_filtered[mask_ativos]
     
     if df_filtered.empty:
         st.warning("⚠️ No data available for the selected filters.")
@@ -429,7 +500,7 @@ def main():
     # Additional Statistics
     st.header("📋 Detailed Statistics")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.subheader("💹 Trade Statistics")
@@ -471,6 +542,36 @@ def main():
         worst_trade = df_filtered['Daily_PNL'].min()
         st.write(f"**Best Trade:** ${best_trade:,.2f}")
         st.write(f"**Worst Trade:** ${worst_trade:,.2f}")
+    
+    with col3:
+        st.subheader("🏆 Asset Performance Rankings")
+        
+        # Calculate performance by Ativo
+        if len(df_filtered) > 0:
+            ativo_performance = df_filtered.groupby('Ativo').agg({
+                'Daily_PNL': ['sum', 'count', 'mean'],
+                'PNL': lambda x: (x > 0).sum() / len(x) * 100  # Win rate
+            }).round(2)
+            
+            # Flatten column names
+            ativo_performance.columns = ['Total_PNL', 'Trade_Count', 'Avg_PNL', 'Win_Rate']
+            ativo_performance = ativo_performance.sort_values('Total_PNL', ascending=False)
+            
+            # Top 5 Best Performers
+            st.write("**🥇 Top 5 Best Assets:**")
+            top_5 = ativo_performance.head(5)
+            for i, (ativo, data) in enumerate(top_5.iterrows(), 1):
+                st.write(f"{i}. **{ativo}**: ${data['Total_PNL']:,.2f} ({data['Trade_Count']:.0f} trades)")
+            
+            st.write("---")
+            
+            # Top 5 Worst Performers
+            st.write("**📉 Top 5 Worst Assets:**")
+            bottom_5 = ativo_performance.tail(5)
+            for i, (ativo, data) in enumerate(bottom_5.iterrows(), 1):
+                st.write(f"{i}. **{ativo}**: ${data['Total_PNL']:,.2f} ({data['Trade_Count']:.0f} trades)")
+        else:
+            st.write("No data available for asset rankings")
     
     st.markdown("---")
     
