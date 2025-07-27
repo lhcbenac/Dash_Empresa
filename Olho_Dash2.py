@@ -246,64 +246,6 @@ def main():
     st.title("📈 Backtesting Dashboard")
     st.markdown("---")
     
-    # Asset Performance Table
-    st.header("📊 Asset Performance Analysis")
-    
-    if len(df_filtered) > 0:
-        # Calculate comprehensive performance metrics by Ativo
-        ativo_stats = df_filtered.groupby('Ativo').agg({
-            'Daily_PNL': ['sum', 'count', 'mean', 'std'],
-            'PNL': [
-                lambda x: (x > 0).sum(),  # Winning trades
-                lambda x: (x < 0).sum(),  # Losing trades
-                lambda x: (x > 0).sum() / len(x) * 100,  # Win rate
-                'max',  # Best trade
-                'min'   # Worst trade
-            ]
-        }).round(2)
-        
-        # Flatten column names
-        ativo_stats.columns = [
-            'Total_PNL', 'Total_Trades', 'Avg_PNL', 'PNL_Std',
-            'Winning_Trades', 'Losing_Trades', 'Win_Rate', 'Best_Trade', 'Worst_Trade'
-        ]
-        
-        # Calculate additional metrics
-        ativo_stats['Profit_Factor'] = np.where(
-            ativo_stats['Losing_Trades'] > 0,
-            (ativo_stats['Winning_Trades'] * ativo_stats['Avg_PNL']) / abs(ativo_stats['Losing_Trades'] * ativo_stats['Avg_PNL']),
-            np.inf
-        )
-        
-        # Sort by total PNL
-        ativo_stats = ativo_stats.sort_values('Total_PNL', ascending=False)
-        
-        # Display the table
-        st.dataframe(
-            ativo_stats.style.format({
-                'Total_PNL': '${:,.2f}',
-                'Avg_PNL': '${:,.2f}',
-                'PNL_Std': '${:,.2f}',
-                'Win_Rate': '{:.1f}%',
-                'Best_Trade': '${:,.2f}',
-                'Worst_Trade': '${:,.2f}',
-                'Profit_Factor': '{:.2f}'
-            }).background_gradient(subset=['Total_PNL'], cmap='RdYlGn'),
-            use_container_width=True,
-            height=400
-        )
-        
-        # Add download button for asset performance
-        asset_excel_data = export_to_excel(ativo_stats.reset_index())
-        st.download_button(
-            label="📥 Export Asset Performance to Excel",
-            data=asset_excel_data,
-            file_name=f"asset_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    
-    st.markdown("---")
-    
     # Add a button to clear cache
     if st.button("🔄 Reload Data (Clear Cache)"):
         st.cache_data.clear()
@@ -381,10 +323,6 @@ def main():
     # Sidebar filters
     st.sidebar.header("🔍 Filters")
     
-    # Date range filter
-    min_date = df['Loop_Date'].min().date()
-    max_date = df['Loop_Date'].max().date()
-    
     # Month filter
     available_months = df['Loop_Date'].dt.to_period('M').unique()
     available_months_str = [str(month) for month in sorted(available_months)]
@@ -405,7 +343,7 @@ def main():
         help="Filter data by specific assets"
     )
     
-    # Filter data based on selected months and ativos
+    # Apply filters
     df_filtered = df.copy()
     
     if selected_months:
@@ -420,11 +358,7 @@ def main():
         st.warning("⚠️ No data available for the selected filters.")
         return
     
-    if df_filtered.empty:
-        st.warning("⚠️ No data available for the selected filters.")
-        return
-    
-    # Calculate lot sizes and PNL with error handling
+    # Calculate lot sizes and PNL
     try:
         # Clean the Gatilho_Dia and PNL columns
         df_filtered['Gatilho_Dia'] = pd.to_numeric(df_filtered['Gatilho_Dia'], errors='coerce')
@@ -576,6 +510,64 @@ def main():
                 st.write(f"{i}. **{ativo}**: ${data['Total_PNL']:,.2f} ({data['Trade_Count']:.0f} trades)")
         else:
             st.write("No data available for asset rankings")
+    
+    st.markdown("---")
+    
+    # Asset Performance Table
+    st.header("📊 Asset Performance Analysis")
+    
+    if len(df_filtered) > 0:
+        # Calculate comprehensive performance metrics by Ativo
+        ativo_stats = df_filtered.groupby('Ativo').agg({
+            'Daily_PNL': ['sum', 'count', 'mean', 'std'],
+            'PNL': [
+                lambda x: (x > 0).sum(),  # Winning trades
+                lambda x: (x < 0).sum(),  # Losing trades
+                lambda x: (x > 0).sum() / len(x) * 100,  # Win rate
+                'max',  # Best trade
+                'min'   # Worst trade
+            ]
+        }).round(2)
+        
+        # Flatten column names
+        ativo_stats.columns = [
+            'Total_PNL', 'Total_Trades', 'Avg_PNL', 'PNL_Std',
+            'Winning_Trades', 'Losing_Trades', 'Win_Rate', 'Best_Trade', 'Worst_Trade'
+        ]
+        
+        # Calculate additional metrics
+        ativo_stats['Profit_Factor'] = np.where(
+            ativo_stats['Losing_Trades'] > 0,
+            (ativo_stats['Winning_Trades'] * ativo_stats['Avg_PNL']) / abs(ativo_stats['Losing_Trades'] * ativo_stats['Avg_PNL']),
+            np.inf
+        )
+        
+        # Sort by total PNL
+        ativo_stats = ativo_stats.sort_values('Total_PNL', ascending=False)
+        
+        # Display the table
+        st.dataframe(
+            ativo_stats.style.format({
+                'Total_PNL': '${:,.2f}',
+                'Avg_PNL': '${:,.2f}',
+                'PNL_Std': '${:,.2f}',
+                'Win_Rate': '{:.1f}%',
+                'Best_Trade': '${:,.2f}',
+                'Worst_Trade': '${:,.2f}',
+                'Profit_Factor': '{:.2f}'
+            }).background_gradient(subset=['Total_PNL'], cmap='RdYlGn'),
+            use_container_width=True,
+            height=400
+        )
+        
+        # Add download button for asset performance
+        asset_excel_data = export_to_excel(ativo_stats.reset_index())
+        st.download_button(
+            label="📥 Export Asset Performance to Excel",
+            data=asset_excel_data,
+            file_name=f"asset_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     
     st.markdown("---")
     
