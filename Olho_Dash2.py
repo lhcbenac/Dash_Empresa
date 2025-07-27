@@ -39,8 +39,8 @@ st.markdown("""
 def load_data():
     """Load and preprocess the backtesting data"""
     try:
-        # Load the Excel file
-        df = pd.read_excel('Backtesting2_history.xlsx')
+        # Load the CSV file
+        df = pd.read_csv('Backtesting2_history.csv')
         
         # Filter only rows where Operou_Dia = True
         df = df[df['Operou_Dia'] == True].copy()
@@ -53,7 +53,7 @@ def load_data():
         
         return df
     except FileNotFoundError:
-        st.error("❌ File 'Backtesting2_history.xlsx' not found. Please upload the file to the same directory.")
+        st.error("❌ File 'Backtesting2_history.csv' not found. Please upload the file to the same directory.")
         return None
     except Exception as e:
         st.error(f"❌ Error loading data: {str(e)}")
@@ -238,16 +238,17 @@ def main():
     
     # Calculate lot sizes and PNL with error handling
     try:
-        # Clean the Gatilho_Dia column first
+        # Clean the Gatilho_Dia and PNL columns
         df_filtered['Gatilho_Dia'] = pd.to_numeric(df_filtered['Gatilho_Dia'], errors='coerce')
         df_filtered['PNL'] = pd.to_numeric(df_filtered['PNL'], errors='coerce')
         
-        # Calculate lot sizes
+        # Calculate lot sizes (for display purposes only)
         df_filtered['Lot_Size'] = df_filtered['Gatilho_Dia'].apply(calculate_lot_size)
         
-        # Calculate PNL (handle NaN values)
-        df_filtered['Calculated_PNL'] = df_filtered['Lot_Size'] * df_filtered['PNL'].fillna(0)
-        df_filtered['Cumulative_PNL'] = df_filtered['Calculated_PNL'].cumsum()
+        # PNL already represents the profit/loss from 50k capital
+        # So we use PNL directly for calculations
+        df_filtered['Daily_PNL'] = df_filtered['PNL'].fillna(0)
+        df_filtered['Cumulative_PNL'] = df_filtered['Daily_PNL'].cumsum()
         df_filtered['Cumulative_Balance'] = 50000 + df_filtered['Cumulative_PNL']
         
     except Exception as e:
@@ -324,8 +325,8 @@ def main():
         losing_trades = len(df_filtered[df_filtered['PNL'] < 0])
         win_rate = (winning_trades / total_trades) * 100 if total_trades > 0 else 0
         
-        avg_win = df_filtered[df_filtered['PNL'] > 0]['Calculated_PNL'].mean() if winning_trades > 0 else 0
-        avg_loss = df_filtered[df_filtered['PNL'] < 0]['Calculated_PNL'].mean() if losing_trades > 0 else 0
+        avg_win = df_filtered[df_filtered['PNL'] > 0]['Daily_PNL'].mean() if winning_trades > 0 else 0
+        avg_loss = df_filtered[df_filtered['PNL'] < 0]['Daily_PNL'].mean() if losing_trades > 0 else 0
         
         st.write(f"**Winning Trades:** {winning_trades}")
         st.write(f"**Losing Trades:** {losing_trades}")
@@ -341,7 +342,7 @@ def main():
         st.subheader("📊 Risk Metrics")
         
         # Sharpe-like ratio (simplified)
-        returns = df_filtered['Calculated_PNL'] / 50000
+        returns = df_filtered['Daily_PNL'] / 50000
         avg_return = returns.mean()
         std_return = returns.std()
         
@@ -354,8 +355,8 @@ def main():
         st.write(f"**Total Return:** ${df_filtered['Cumulative_PNL'].iloc[-1]:,.2f}")
         
         # Best and worst trades
-        best_trade = df_filtered['Calculated_PNL'].max()
-        worst_trade = df_filtered['Calculated_PNL'].min()
+        best_trade = df_filtered['Daily_PNL'].max()
+        worst_trade = df_filtered['Daily_PNL'].min()
         st.write(f"**Best Trade:** ${best_trade:,.2f}")
         st.write(f"**Worst Trade:** ${worst_trade:,.2f}")
     
@@ -368,7 +369,7 @@ def main():
     display_columns = st.multiselect(
         "Select columns to display:",
         options=df_filtered.columns.tolist(),
-        default=['Loop_Date', 'Ativo', 'Gatilho_Dia', 'Lot_Size', 'PNL', 'Calculated_PNL', 'Cumulative_Balance'],
+        default=['Loop_Date', 'Ativo', 'Gatilho_Dia', 'Lot_Size', 'PNL', 'Daily_PNL', 'Cumulative_Balance'],
         help="Choose which columns to show in the trade list"
     )
     
@@ -379,7 +380,7 @@ def main():
         # Format numeric columns
         numeric_columns = display_df.select_dtypes(include=[np.number]).columns
         for col in numeric_columns:
-            if col in ['Cumulative_Balance', 'Calculated_PNL', 'Gatilho_Dia']:
+            if col in ['Cumulative_Balance', 'Daily_PNL', 'Gatilho_Dia', 'PNL']:
                 display_df[col] = display_df[col].apply(lambda x: f"${x:,.2f}" if pd.notna(x) else "")
             elif col == 'Lot_Size':
                 display_df[col] = display_df[col].apply(lambda x: f"{x:,}" if pd.notna(x) else "")
