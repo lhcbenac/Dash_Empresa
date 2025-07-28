@@ -175,13 +175,15 @@ def create_performance_chart(df_filtered):
     """Create performance chart with cumulative PNL"""
     fig = go.Figure()
     
-    # Add cumulative PNL line
+    # Add cumulative PNL area
     fig.add_trace(go.Scatter(
         x=df_filtered['Loop_Date'],
         y=df_filtered['Cumulative_Balance'],
         mode='lines',
         name='Cumulative Balance',
         line=dict(color='#1f77b4', width=2),
+        fill='tonexty',  # Fill to the x-axis
+        fillcolor='rgba(31, 119, 180, 0.3)',  # Semi-transparent blue
         hovertemplate='Date: %{x}<br>Balance: $%{y:,.2f}<extra></extra>'
     ))
     
