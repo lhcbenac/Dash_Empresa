@@ -484,10 +484,15 @@ def main():
     with col3:
         st.subheader("🔄 Buy vs Sell Analysis")
         
-        # Check if we have Entradas column to differentiate Buy/Sell
-        if 'Entradas' in df_filtered.columns:
+        # Parse Buy/Sell from Rastreador column
+        if 'Rastreador' in df_filtered.columns:
+            # Extract Buy/Sell from Rastreador text
+            df_filtered['Trade_Direction'] = df_filtered['Rastreador'].apply(
+                lambda x: 'Buy' if 'Buy' in str(x) else ('Sell' if 'Sell' in str(x) else 'Unknown')
+            )
+            
             # Buy trades analysis
-            buy_trades = df_filtered[df_filtered['Entradas'] == 'Buy']
+            buy_trades = df_filtered[df_filtered['Trade_Direction'] == 'Buy']
             if len(buy_trades) > 0:
                 buy_winning = len(buy_trades[buy_trades['PNL'] > 0])
                 buy_losing = len(buy_trades[buy_trades['PNL'] < 0])
@@ -507,7 +512,7 @@ def main():
             st.write("---")
             
             # Sell trades analysis
-            sell_trades = df_filtered[df_filtered['Entradas'] == 'Sell']
+            sell_trades = df_filtered[df_filtered['Trade_Direction'] == 'Sell']
             if len(sell_trades) > 0:
                 sell_winning = len(sell_trades[sell_trades['PNL'] > 0])
                 sell_losing = len(sell_trades[sell_trades['PNL'] < 0])
@@ -524,10 +529,116 @@ def main():
             else:
                 st.write("**📉 SELL Trades:** No data")
         else:
-            st.write("**Entradas column not found**")
+            st.write("**Rastreador column not found**")
             st.write("Cannot analyze Buy vs Sell")
-            st.write("Available columns:")
-            st.write(list(df_filtered.columns))
+    
+    st.markdown("---")
+    
+    # Strategy Performance Analysis
+    st.header("🎯 Strategy Performance Analysis")
+    
+    if 'Rastreador' in df_filtered.columns:
+        # Extract strategy from Rastreador text (Corpo, Pavio, GAP, Movimento)
+        def extract_strategy(rastreador_text):
+            text = str(rastreador_text)
+            if 'Corpo' in text:
+                return 'Corpo'
+            elif 'Pavio' in text:
+                return 'Pavio'
+            elif 'GAP' in text:
+                return 'GAP'
+            elif 'Movimento' in text:
+                return 'Movimento'
+            else:
+                return 'Unknown'
+        
+        df_filtered['Strategy'] = df_filtered['Rastreador'].apply(extract_strategy)
+        
+        # Calculate strategy performance
+        strategy_stats = []
+        strategies = ['Corpo', 'Pavio', 'GAP', 'Movimento']
+        
+        for strategy in strategies:
+            strategy_trades = df_filtered[df_filtered['Strategy'] == strategy]
+            
+            if len(strategy_trades) > 0:
+                total_trades = len(strategy_trades)
+                winning_trades = len(strategy_trades[strategy_trades['PNL'] > 0])
+                losing_trades = len(strategy_trades[strategy_trades['PNL'] < 0])
+                win_rate = (winning_trades / total_trades) * 100 if total_trades > 0 else 0
+                
+                total_pnl = strategy_trades['Daily_PNL'].sum()
+                avg_win = strategy_trades[strategy_trades['PNL'] > 0]['Daily_PNL'].mean() if winning_trades > 0 else 0
+                avg_loss = strategy_trades[strategy_trades['PNL'] < 0]['Daily_PNL'].mean() if losing_trades > 0 else 0
+                profit_factor = abs(avg_win * winning_trades) / abs(avg_loss * losing_trades) if losing_trades > 0 else float('inf')
+                
+                strategy_stats.append({
+                    'Strategy': strategy,
+                    'Total_Trades': total_trades,
+                    'Win_Rate': win_rate,
+                    'Total_PNL': total_pnl,
+                    'Profit_Factor': profit_factor,
+                    'Avg_Win': avg_win,
+                    'Avg_Loss': avg_loss
+                })
+        
+        if strategy_stats:
+            # Create DataFrame for strategy performance
+            strategy_df = pd.DataFrame(strategy_stats)
+            strategy_df = strategy_df.sort_values('Total_PNL', ascending=False)
+            
+            # Display strategy performance table
+            st.dataframe(
+                strategy_df.style.format({
+                    'Win_Rate': '{:.1f}%',
+                    'Total_PNL': '${:,.2f}',
+                    'Profit_Factor': '{:.2f}',
+                    'Avg_Win': '${:,.2f}',
+                    'Avg_Loss': '${:,.2f}'
+                }).background_gradient(subset=['Total_PNL'], cmap='RdYlGn'),
+                use_container_width=True,
+                height=200
+            )
+            
+            # Strategy summary
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                best_strategy = strategy_df.iloc[0]
+                st.metric(
+                    label="🏆 Best Strategy",
+                    value=best_strategy['Strategy'],
+                    delta=f"${best_strategy['Total_PNL']:,.2f}"
+                )
+            
+            with col2:
+                highest_win_rate = strategy_df.loc[strategy_df['Win_Rate'].idxmax()]
+                st.metric(
+                    label="🎯 Highest Win Rate",
+                    value=f"{highest_win_rate['Win_Rate']:.1f}%",
+                    delta=highest_win_rate['Strategy']
+                )
+            
+            with col3:
+                best_profit_factor = strategy_df.loc[strategy_df['Profit_Factor'].idxmax()]
+                st.metric(
+                    label="⚖️ Best Profit Factor",
+                    value=f"{best_profit_factor['Profit_Factor']:.2f}",
+                    delta=best_profit_factor['Strategy']
+                )
+            
+            # Export button for strategy performance
+            strategy_excel_data = export_to_excel(strategy_df)
+            st.download_button(
+                label="📥 Export Strategy Performance to Excel",
+                data=strategy_excel_data,
+                file_name=f"strategy_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            st.write("No strategy data found")
+    else:
+        st.write("Rastreador column not found - cannot analyze strategies")
     
     st.markdown("---")
     
