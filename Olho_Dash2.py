@@ -9,29 +9,201 @@ import math
 
 # Set page configuration
 st.set_page_config(
-    page_title="Backtesting Dashboard",
-    page_icon="📈",
+    page_title="Trading Performance Dashboard",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Enhanced Custom CSS for professional styling
 st.markdown("""
 <style>
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 5px solid #1f77b4;
+    /* Import modern font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    /* Global styles */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        font-family: 'Inter', sans-serif;
     }
+    
+    /* Header styling */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    
+    .main-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .main-header p {
+        margin: 0.5rem 0 0 0;
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+    
+    /* Metric cards enhancement */
+    .stMetric {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        border: 1px solid #e0e6ed;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .stMetric:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
     .stMetric > label {
-        font-size: 14px !important;
-        font-weight: bold !important;
+        font-size: 0.875rem !important;
+        font-weight: 600 !important;
+        color: #6b7280 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
+    
     .stMetric > div {
-        font-size: 24px !important;
-        font-weight: bold !important;
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+        color: #1f2937 !important;
     }
+    
+    /* Section headers */
+    .section-header {
+        background: #f8fafc;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid #3b82f6;
+        margin: 2rem 0 1rem 0;
+    }
+    
+    .section-header h2 {
+        margin: 0;
+        color: #1e293b;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    
+    /* Statistics cards */
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1rem;
+        height: 100%;
+    }
+    
+    .stat-card h3 {
+        color: #1e293b;
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 0 0 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .stat-value {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin: 0.25rem 0;
+        color: #374151;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+    
+    /* Dataframe styling */
+    .stDataFrame {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    /* Download button styling */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .stDownloadButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background: #f1f5f9;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    
+    /* Progress indicators */
+    .progress-bar {
+        background: #e2e8f0;
+        border-radius: 10px;
+        height: 8px;
+        overflow: hidden;
+        margin: 0.5rem 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+    
+    /* Alert styling */
+    .stAlert {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display:none;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -41,11 +213,8 @@ def load_data():
     try:
         # Load the CSV file with more explicit parameters
         df_raw = pd.read_csv('Backtesting2_history.csv', 
-                           encoding='utf-8',  # Try different encodings if needed
-                           low_memory=False)  # Don't infer dtypes chunk by chunk
-        
-        # Debug: Show total rows before filtering
-        st.info(f"📊 Total rows in CSV file: {len(df_raw)}")
+                           encoding='utf-8',
+                           low_memory=False)
         
         # Show date range in raw data
         if 'Loop_Date' in df_raw.columns:
@@ -53,28 +222,18 @@ def load_data():
                 raw_dates = pd.to_datetime(df_raw['Loop_Date'], errors='coerce')
                 valid_dates = raw_dates.dropna()
                 if len(valid_dates) > 0:
-                    st.info(f"📅 Raw date range: {valid_dates.min()} to {valid_dates.max()}")
-                    
-                    # Show year distribution
                     years = valid_dates.dt.year.value_counts().sort_index()
-                    st.info(f"📅 Years in data: {dict(years)}")
-                else:
-                    st.warning("⚠️ No valid dates found in Loop_Date column")
+                    st.success(f"📊 Loaded {len(df_raw):,} total records spanning {len(years)} years ({min(years.index)}-{max(years.index)})")
             except Exception as date_error:
-                st.warning(f"⚠️ Error parsing dates: {date_error}")
+                st.warning(f"⚠️ Date parsing issue: {date_error}")
         
-        # Check if Operou_Dia column exists and its values
+        # Check if Operou_Dia column exists
         if 'Operou_Dia' not in df_raw.columns:
             st.error("❌ Column 'Operou_Dia' not found in the CSV file.")
             st.write("Available columns:", df_raw.columns.tolist())
             return None
         
-        # Show Operou_Dia value distribution
-        operou_dia_counts = df_raw['Operou_Dia'].value_counts()
-        st.info(f"📈 Operou_Dia distribution: {dict(operou_dia_counts)}")
-        
         # Filter only rows where Operou_Dia = True
-        # Handle different possible representations of True
         mask = (
             (df_raw['Operou_Dia'] == True) | 
             (df_raw['Operou_Dia'] == 'True') | 
@@ -85,85 +244,63 @@ def load_data():
         
         df = df_raw[mask].copy()
         
-        st.info(f"📊 Rows after filtering Operou_Dia = True: {len(df)}")
-        
         if len(df) == 0:
-            st.warning("⚠️ No rows found where Operou_Dia = True. Check your data.")
-            st.write("Sample Operou_Dia values:", df_raw['Operou_Dia'].head(20).tolist())
+            st.error("❌ No trading records found (Operou_Dia = True)")
             return None
         
-        # Convert Loop_Date to datetime and normalize (remove time component)
+        # Process dates
         try:
             df['Loop_Date'] = pd.to_datetime(df['Loop_Date'], errors='coerce')
-            
-            # Remove rows with invalid dates
             invalid_dates = df['Loop_Date'].isna().sum()
             if invalid_dates > 0:
-                st.warning(f"⚠️ Found {invalid_dates} rows with invalid dates - removing them")
+                st.warning(f"⚠️ Removed {invalid_dates} records with invalid dates")
                 df = df.dropna(subset=['Loop_Date'])
             
             # Normalize dates (remove time component)
             df['Loop_Date'] = df['Loop_Date'].dt.date
-            df['Loop_Date'] = pd.to_datetime(df['Loop_Date'])  # Convert back to datetime for consistency
+            df['Loop_Date'] = pd.to_datetime(df['Loop_Date'])
             
         except Exception as date_error:
-            st.error(f"❌ Error processing dates: {date_error}")
+            st.error(f"❌ Date processing error: {date_error}")
             return None
         
         # Sort by date (oldest to newest) - CRITICAL for proper cumulative calculations
         df = df.sort_values('Loop_Date', ascending=True).reset_index(drop=True)
         
-        # Final check on date range
+        # Success message
         if len(df) > 0:
-            st.success(f"✅ Successfully loaded {len(df)} records from {df['Loop_Date'].min().date()} to {df['Loop_Date'].max().date()} (sorted chronologically)")
+            st.success(f"✅ Successfully processed {len(df):,} trading records from {df['Loop_Date'].min().date()} to {df['Loop_Date'].max().date()}")
         
         return df
         
     except FileNotFoundError:
         st.error("❌ File 'Backtesting2_history.csv' not found. Please upload the file to the same directory.")
         return None
-    except UnicodeDecodeError:
-        st.error("❌ Error reading CSV file. Try saving it with UTF-8 encoding.")
-        return None
     except Exception as e:
         st.error(f"❌ Error loading data: {str(e)}")
-        st.error(f"Error details: {type(e).__name__}")
         return None
 
 def calculate_lot_size(gatilho_dia_value, initial_balance=50000):
     """Calculate lot size based on gatilho_dia value"""
-    # Handle NaN, None, zero, or negative values
     if pd.isna(gatilho_dia_value) or gatilho_dia_value is None or gatilho_dia_value <= 0:
         return 100
     
     try:
-        # Convert to float to ensure numeric operation
         gatilho_dia_value = float(gatilho_dia_value)
         lot_size = initial_balance / gatilho_dia_value
-        
-        # Round down to nearest 100, minimum 100
         lot_size = max(100, math.floor(lot_size / 100) * 100)
         return int(lot_size)
     except (ValueError, TypeError, ZeroDivisionError):
-        # Return default value if any error occurs
         return 100
 
 def calculate_drawdown(cumulative_pnl):
     """Calculate drawdown statistics"""
-    # Calculate running maximum (peak)
     peak = cumulative_pnl.cummax()
-    
-    # Calculate drawdown
     drawdown = cumulative_pnl - peak
-    
-    # Find maximum drawdown
     max_drawdown = drawdown.min()
     max_drawdown_idx = drawdown.idxmin()
-    
-    # Find the peak before max drawdown
     peak_value = peak.iloc[max_drawdown_idx]
     
-    # Calculate drawdown percentage
     if peak_value != 0:
         max_drawdown_pct = (max_drawdown / peak_value) * 100
     else:
@@ -172,42 +309,69 @@ def calculate_drawdown(cumulative_pnl):
     return drawdown, max_drawdown, max_drawdown_pct, peak
 
 def create_performance_chart(df_filtered):
-    """Create performance chart with cumulative PNL"""
+    """Create enhanced performance chart with area fill"""
     fig = go.Figure()
     
-    # Add cumulative PNL area
+    # Add cumulative balance area
     fig.add_trace(go.Scatter(
         x=df_filtered['Loop_Date'],
         y=df_filtered['Cumulative_Balance'],
         mode='lines',
-        name='Cumulative Balance',
-        line=dict(color='#1f77b4', width=2),
-        fill='tonexty',  # Fill to the x-axis
-        fillcolor='rgba(31, 119, 180, 0.3)',  # Semi-transparent blue
-        hovertemplate='Date: %{x}<br>Balance: $%{y:,.2f}<extra></extra>'
+        name='Portfolio Balance',
+        line=dict(color='#3b82f6', width=3),
+        fill='tonexty',
+        fillcolor='rgba(59, 130, 246, 0.2)',
+        hovertemplate='<b>%{x}</b><br>Balance: $%{y:,.2f}<br><extra></extra>'
     ))
     
-    # Add initial balance line
+    # Add initial balance reference line
     fig.add_hline(
         y=50000, 
         line_dash="dash", 
-        line_color="gray",
-        annotation_text="Initial Balance ($50,000)"
+        line_color="#6b7280",
+        line_width=2,
+        annotation_text="Initial Capital ($50,000)",
+        annotation_position="top right"
     )
     
     fig.update_layout(
-        title="📈 Cumulative Performance Over Time",
+        title={
+            'text': "📈 Portfolio Performance Over Time",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20, 'family': 'Inter', 'color': '#1f2937'}
+        },
         xaxis_title="Date",
-        yaxis_title="Balance ($)",
+        yaxis_title="Portfolio Value ($)",
         hovermode='x unified',
-        showlegend=True,
-        height=400
+        showlegend=False,
+        height=450,
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(family="Inter", size=12, color="#374151"),
+        xaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='#f3f4f6',
+            showline=True,
+            linewidth=1,
+            linecolor='#e5e7eb'
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='#f3f4f6',
+            showline=True,
+            linewidth=1,
+            linecolor='#e5e7eb',
+            tickformat='$,.0f'
+        )
     )
     
     return fig
 
 def create_drawdown_chart(df_filtered, drawdown_series):
-    """Create drawdown chart"""
+    """Create enhanced drawdown chart"""
     fig = go.Figure()
     
     # Add drawdown area
@@ -217,21 +381,46 @@ def create_drawdown_chart(df_filtered, drawdown_series):
         fill='tonexty',
         mode='lines',
         name='Drawdown',
-        line=dict(color='red', width=1),
-        fillcolor='rgba(255, 0, 0, 0.3)',
-        hovertemplate='Date: %{x}<br>Drawdown: $%{y:,.2f}<extra></extra>'
+        line=dict(color='#ef4444', width=2),
+        fillcolor='rgba(239, 68, 68, 0.3)',
+        hovertemplate='<b>%{x}</b><br>Drawdown: $%{y:,.2f}<br><extra></extra>'
     ))
     
     # Add zero line
-    fig.add_hline(y=0, line_dash="solid", line_color="black", line_width=1)
+    fig.add_hline(y=0, line_dash="solid", line_color="#374151", line_width=1)
     
     fig.update_layout(
-        title="📉 Drawdown Over Time",
+        title={
+            'text': "📉 Portfolio Drawdown Analysis",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20, 'family': 'Inter', 'color': '#1f2937'}
+        },
         xaxis_title="Date",
         yaxis_title="Drawdown ($)",
         hovermode='x unified',
-        showlegend=True,
-        height=300
+        showlegend=False,
+        height=350,
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(family="Inter", size=12, color="#374151"),
+        xaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='#f3f4f6',
+            showline=True,
+            linewidth=1,
+            linecolor='#e5e7eb'
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='#f3f4f6',
+            showline=True,
+            linewidth=1,
+            linecolor='#e5e7eb',
+            tickformat='$,.0f'
+        )
     )
     
     return fig
@@ -240,110 +429,101 @@ def export_to_excel(df):
     """Export dataframe to Excel"""
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Trade_List', index=False)
-    
+        df.to_excel(writer, sheet_name='Data', index=False)
     return output.getvalue()
 
-def main():
-    st.title("📈 Backtesting Dashboard")
-    st.markdown("---")
+def create_metric_card(label, value, delta=None, help_text=None):
+    """Create a professional metric display"""
+    delta_html = f"<div style='color: {'#10b981' if delta and float(delta.replace('$', '').replace(',', '')) > 0 else '#ef4444'}; font-size: 0.875rem; font-weight: 500; margin-top: 0.25rem;'>{delta}</div>" if delta else ""
     
-    # Add a button to clear cache
-    if st.button("🔄 Reload Data (Clear Cache)"):
-        st.cache_data.clear()
-        st.rerun()
+    return f"""
+    <div class="stat-card">
+        <div style="color: #6b7280; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+            {label}
+        </div>
+        <div style="color: #1f2937; font-size: 1.875rem; font-weight: 700; line-height: 1;">
+            {value}
+        </div>
+        {delta_html}
+    </div>
+    """
+
+def main():
+    # Custom header
+    st.markdown("""
+    <div class="main-header">
+        <h1>📊 Trading Performance Dashboard</h1>
+        <p>Advanced Analytics & Portfolio Insights</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Control panel
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("🔄 Refresh Data", help="Clear cache and reload data"):
+            st.cache_data.clear()
+            st.rerun()
     
     # Load data
-    df = load_data()
+    with st.spinner("Loading trading data..."):
+        df = load_data()
     
     if df is None or df.empty:
-        st.warning("⚠️ No data available. Please check your data file.")
+        st.error("⚠️ No data available. Please check your data file.")
         return
     
-    # Debug information (can be removed later)
-    with st.expander("🔍 Data Debug Info (Click to expand)"):
-        try:
-            df_raw_debug = pd.read_csv('Backtesting2_history.csv', low_memory=False)
-            st.write(f"**Total rows in file:** {len(df_raw_debug)}")
-            
-            # Check years in raw data
-            if 'Loop_Date' in df_raw_debug.columns:
-                raw_dates = pd.to_datetime(df_raw_debug['Loop_Date'], errors='coerce')
-                if raw_dates.notna().any():
-                    years_raw = raw_dates.dt.year.value_counts().sort_index()
-                    st.write(f"**Years in raw CSV:** {dict(years_raw)}")
-                    
-                    # Check Operou_Dia by year
-                    df_raw_debug['Year'] = raw_dates.dt.year
-                    operou_by_year = df_raw_debug.groupby('Year')['Operou_Dia'].value_counts()
-                    st.write(f"**Operou_Dia by year:**")
-                    for (year, operou), count in operou_by_year.items():
-                        st.write(f"- {year} - {operou}: {count}")
-        except:
-            st.write("Could not read raw file for debugging")
+    # Advanced debug information
+    with st.expander("🔍 Data Quality Report", expanded=False):
+        col1, col2, col3 = st.columns(3)
         
-        st.write(f"**Rows with Operou_Dia = True:** {len(df)}")
-        st.write(f"**Date range:** {df['Loop_Date'].min()} to {df['Loop_Date'].max()}")
+        with col1:
+            st.markdown("**📊 Data Overview**")
+            st.write(f"• Total Records: {len(df):,}")
+            st.write(f"• Date Range: {(df['Loop_Date'].max() - df['Loop_Date'].min()).days} days")
+            st.write(f"• Assets Traded: {df['Ativo'].nunique()}")
         
-        # Show all available months in the filtered data
-        all_months = df['Loop_Date'].dt.to_period('M').value_counts().sort_index()
-        st.write(f"**Available months with trade counts:**")
-        for month, count in all_months.items():
-            st.write(f"- {month}: {count} trades")
+        with col2:
+            st.markdown("**📅 Temporal Distribution**")
+            years_dist = df['Loop_Date'].dt.year.value_counts().sort_index()
+            for year, count in years_dist.items():
+                st.write(f"• {year}: {count:,} trades")
         
-        # Show years in filtered data
-        years_filtered = df['Loop_Date'].dt.year.value_counts().sort_index()
-        st.write(f"**Years in filtered data:** {dict(years_filtered)}")
-        
-        # Check for any issues with Operou_Dia column
-        if 'Operou_Dia' in df.columns:
-            operou_dia_values = df['Operou_Dia'].value_counts()
-            st.write(f"**Operou_Dia values in filtered data:**")
-            for value, count in operou_dia_values.items():
-                st.write(f"- {value}: {count}")
-        
-        st.write(f"**Gatilho_Dia column info:**")
-        st.write(f"- Data type: {df['Gatilho_Dia'].dtype}")
-        st.write(f"- Non-null values: {df['Gatilho_Dia'].notna().sum()}")
-        st.write(f"- Unique values: {df['Gatilho_Dia'].nunique()}")
-        st.write(f"- Sample values: {df['Gatilho_Dia'].head().tolist()}")
-        
-        # Try to convert to numeric and check for issues
-        gatilho_numeric = pd.to_numeric(df['Gatilho_Dia'], errors='coerce')
-        st.write(f"- Values that can't be converted to numbers: {gatilho_numeric.isna().sum()}")
-        if gatilho_numeric.notna().any():
-            st.write(f"- Zero values (numeric): {(gatilho_numeric == 0).sum()}")
-            st.write(f"- Negative values (numeric): {(gatilho_numeric < 0).sum()}")
-        
-        st.write(f"**PNL column info:**")
-        st.write(f"- Data type: {df['PNL'].dtype}")
-        st.write(f"- Non-null values: {df['PNL'].notna().sum()}")
-        
-        st.write(f"**Sample data:**")
-        st.dataframe(df[['Loop_Date', 'Ativo', 'Gatilho_Dia', 'PNL', 'Operou_Dia']].head(10))
+        with col3:
+            st.markdown("**🔧 Data Quality**")
+            st.write(f"• Missing PNL: {df['PNL'].isna().sum()}")
+            st.write(f"• Missing Gatilho_Dia: {df['Gatilho_Dia'].isna().sum()}")
+            st.write(f"• Missing Ativo: {df['Ativo'].isna().sum()}")
     
-    # Sidebar filters
-    st.sidebar.header("🔍 Filters")
-    
-    # Month filter
-    available_months = df['Loop_Date'].dt.to_period('M').unique()
-    available_months_str = [str(month) for month in sorted(available_months)]
-    
-    selected_months = st.sidebar.multiselect(
-        "Select Months",
-        options=available_months_str,
-        default=available_months_str,
-        help="Filter data by specific months (YYYY-MM format)"
-    )
-    
-    # Ativo filter
-    available_ativos = sorted(df['Ativo'].dropna().unique())
-    selected_ativos = st.sidebar.multiselect(
-        "Select Assets (Ativo)",
-        options=available_ativos,
-        default=available_ativos,
-        help="Filter data by specific assets"
-    )
+    # Enhanced sidebar
+    with st.sidebar:
+        st.markdown("### 🎛️ Control Panel")
+        
+        # Date filter
+        st.markdown("#### 📅 Time Period")
+        available_months = df['Loop_Date'].dt.to_period('M').unique()
+        available_months_str = [str(month) for month in sorted(available_months)]
+        
+        selected_months = st.multiselect(
+            "Select Months",
+            options=available_months_str,
+            default=available_months_str,
+            help="Filter by specific time periods"
+        )
+        
+        # Asset filter
+        st.markdown("#### 🏢 Assets")
+        available_ativos = sorted(df['Ativo'].dropna().unique())
+        selected_ativos = st.multiselect(
+            "Select Assets",
+            options=available_ativos,
+            default=available_ativos,
+            help="Filter by specific trading assets"
+        )
+        
+        # Filter summary
+        st.markdown("---")
+        st.markdown("#### 📋 Filter Summary")
+        st.info(f"**Periods:** {len(selected_months)}/{len(available_months_str)}\n\n**Assets:** {len(selected_ativos)}/{len(available_ativos)}")
     
     # Apply filters
     df_filtered = df.copy()
@@ -357,60 +537,56 @@ def main():
         df_filtered = df_filtered[mask_ativos]
     
     if df_filtered.empty:
-        st.warning("⚠️ No data available for the selected filters.")
+        st.warning("⚠️ No data matches your current filters. Please adjust your selection.")
         return
     
-    # Calculate lot sizes and PNL
+    # Calculate metrics
     try:
-        # Clean the Gatilho_Dia and PNL columns
         df_filtered['Gatilho_Dia'] = pd.to_numeric(df_filtered['Gatilho_Dia'], errors='coerce')
         df_filtered['PNL'] = pd.to_numeric(df_filtered['PNL'], errors='coerce')
         
-        # Calculate lot sizes based on 50k / Gatilho_Dia
         df_filtered['Lot_Size'] = df_filtered['Gatilho_Dia'].apply(calculate_lot_size)
-        
-        # Calculate actual PNL: PNL per unit × Lot Size
         df_filtered['Daily_PNL'] = df_filtered['Lot_Size'] * df_filtered['PNL'].fillna(0)
         df_filtered['Cumulative_PNL'] = df_filtered['Daily_PNL'].cumsum()
         df_filtered['Cumulative_Balance'] = 50000 + df_filtered['Cumulative_PNL']
         
     except Exception as e:
-        st.error(f"❌ Error calculating metrics: {str(e)}")
-        st.info("Please check your data for invalid values in Gatilho_Dia or PNL columns.")
+        st.error(f"❌ Calculation error: {str(e)}")
         return
     
-    # Calculate drawdown
+    # Calculate additional metrics
     drawdown_series, max_drawdown, max_drawdown_pct, peak_series = calculate_drawdown(df_filtered['Cumulative_Balance'])
     
-    # Key Metrics Row
-    st.header("📊 Key Performance Metrics")
+    # Key Performance Indicators
+    st.markdown('<div class="section-header"><h2>📊 Portfolio Overview</h2></div>', unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
     
+    total_trades = len(df_filtered)
+    final_balance = df_filtered['Cumulative_Balance'].iloc[-1]
+    performance_pct = ((final_balance - 50000) / 50000) * 100
+    
     with col1:
-        total_trades = len(df_filtered)
         st.metric(
-            label="🔢 Total Trades",
+            label="📈 Total Trades",
             value=f"{total_trades:,}",
-            help="Total number of trades executed"
+            help="Total number of executed trades"
         )
     
     with col2:
-        final_balance = df_filtered['Cumulative_Balance'].iloc[-1]
         st.metric(
-            label="💰 Final Balance",
+            label="💰 Current Balance",
             value=f"${final_balance:,.2f}",
             delta=f"${final_balance - 50000:,.2f}",
-            help="Final balance after all trades"
+            help="Current portfolio value"
         )
     
     with col3:
-        performance_pct = ((final_balance - 50000) / 50000) * 100
         st.metric(
-            label="📈 Performance %",
-            value=f"{performance_pct:.2f}%",
+            label="📊 Total Return",
+            value=f"{performance_pct:+.2f}%",
             delta=f"{performance_pct:.2f}%",
-            help="Overall performance percentage"
+            help="Overall portfolio performance"
         )
     
     with col4:
@@ -422,10 +598,8 @@ def main():
             help="Maximum peak-to-trough decline"
         )
     
-    st.markdown("---")
-    
-    # Performance Charts
-    st.header("📈 Performance Analysis")
+    # Performance visualization
+    st.markdown('<div class="section-header"><h2>📈 Performance Analysis</h2></div>', unsafe_allow_html=True)
     
     # Performance chart
     perf_chart = create_performance_chart(df_filtered)
@@ -435,15 +609,13 @@ def main():
     drawdown_chart = create_drawdown_chart(df_filtered, drawdown_series)
     st.plotly_chart(drawdown_chart, use_container_width=True)
     
-    st.markdown("---")
-    
-    # Additional Statistics
-    st.header("📋 Detailed Statistics")
+    # Detailed statistics
+    st.markdown('<div class="section-header"><h2>📋 Detailed Analytics</h2></div>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.subheader("💹 Trade Statistics")
+        st.markdown('<div class="stat-card"><h3>💹 Trade Statistics</h3>', unsafe_allow_html=True)
         winning_trades = len(df_filtered[df_filtered['PNL'] > 0])
         losing_trades = len(df_filtered[df_filtered['PNL'] < 0])
         win_rate = (winning_trades / total_trades) * 100 if total_trades > 0 else 0
@@ -451,96 +623,84 @@ def main():
         avg_win = df_filtered[df_filtered['PNL'] > 0]['Daily_PNL'].mean() if winning_trades > 0 else 0
         avg_loss = df_filtered[df_filtered['PNL'] < 0]['Daily_PNL'].mean() if losing_trades > 0 else 0
         
-        st.write(f"**Winning Trades:** {winning_trades}")
-        st.write(f"**Losing Trades:** {losing_trades}")
-        st.write(f"**Win Rate:** {win_rate:.2f}%")
-        st.write(f"**Average Win:** ${avg_win:,.2f}")
-        st.write(f"**Average Loss:** ${avg_loss:,.2f}")
+        st.markdown(f'<div class="stat-value"><strong>Winning Trades:</strong> {winning_trades:,}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-value"><strong>Losing Trades:</strong> {losing_trades:,}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-value"><strong>Win Rate:</strong> {win_rate:.1f}%</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-value"><strong>Avg Win:</strong> ${avg_win:,.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-value"><strong>Avg Loss:</strong> ${avg_loss:,.2f}</div>', unsafe_allow_html=True)
         
         if avg_loss != 0:
             profit_factor = abs(avg_win * winning_trades) / abs(avg_loss * losing_trades)
-            st.write(f"**Profit Factor:** {profit_factor:.2f}")
+            st.markdown(f'<div class="stat-value"><strong>Profit Factor:</strong> {profit_factor:.2f}</div>', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.subheader("📊 Risk Metrics")
+        st.markdown('<div class="stat-card"><h3>📊 Risk Metrics</h3>', unsafe_allow_html=True)
         
-        # Sharpe-like ratio (simplified)
         returns = df_filtered['Daily_PNL'] / 50000
         avg_return = returns.mean()
         std_return = returns.std()
         
         if std_return != 0:
-            sharpe_ratio = avg_return / std_return * np.sqrt(252)  # Assuming daily data
-            st.write(f"**Sharpe Ratio:** {sharpe_ratio:.2f}")
+            sharpe_ratio = avg_return / std_return * np.sqrt(252)
+            st.markdown(f'<div class="stat-value"><strong>Sharpe Ratio:</strong> {sharpe_ratio:.2f}</div>', unsafe_allow_html=True)
         
-        st.write(f"**Maximum Drawdown:** ${max_drawdown:,.2f}")
-        st.write(f"**Maximum Drawdown %:** {max_drawdown_pct:.2f}%")
-        st.write(f"**Total Return:** ${df_filtered['Cumulative_PNL'].iloc[-1]:,.2f}")
+        st.markdown(f'<div class="stat-value"><strong>Max Drawdown:</strong> ${max_drawdown:,.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-value"><strong>Drawdown %:</strong> {max_drawdown_pct:.2f}%</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-value"><strong>Total Return:</strong> ${df_filtered["Cumulative_PNL"].iloc[-1]:,.2f}</div>', unsafe_allow_html=True)
         
-        # Best and worst trades
         best_trade = df_filtered['Daily_PNL'].max()
         worst_trade = df_filtered['Daily_PNL'].min()
-        st.write(f"**Best Trade:** ${best_trade:,.2f}")
-        st.write(f"**Worst Trade:** ${worst_trade:,.2f}")
+        st.markdown(f'<div class="stat-value"><strong>Best Trade:</strong> ${best_trade:,.2f}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-value"><strong>Worst Trade:</strong> ${worst_trade:,.2f}</div>', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     with col3:
-        st.subheader("🔄 Buy vs Sell Analysis")
+        st.markdown('<div class="stat-card"><h3>🔄 Buy vs Sell Analysis</h3>', unsafe_allow_html=True)
         
-        # Parse Buy/Sell from Rastreador column
         if 'Rastreador' in df_filtered.columns:
-            # Extract Buy/Sell from Rastreador text
             df_filtered['Trade_Direction'] = df_filtered['Rastreador'].apply(
                 lambda x: 'Buy' if 'Buy' in str(x) else ('Sell' if 'Sell' in str(x) else 'Unknown')
             )
             
-            # Buy trades analysis
+            # Buy analysis
             buy_trades = df_filtered[df_filtered['Trade_Direction'] == 'Buy']
             if len(buy_trades) > 0:
                 buy_winning = len(buy_trades[buy_trades['PNL'] > 0])
-                buy_losing = len(buy_trades[buy_trades['PNL'] < 0])
-                buy_win_rate = (buy_winning / len(buy_trades)) * 100 if len(buy_trades) > 0 else 0
-                
+                buy_win_rate = (buy_winning / len(buy_trades)) * 100
                 buy_avg_win = buy_trades[buy_trades['PNL'] > 0]['Daily_PNL'].mean() if buy_winning > 0 else 0
-                buy_avg_loss = buy_trades[buy_trades['PNL'] < 0]['Daily_PNL'].mean() if buy_losing > 0 else 0
-                buy_profit_factor = abs(buy_avg_win * buy_winning) / abs(buy_avg_loss * buy_losing) if buy_losing > 0 else float('inf')
+                buy_avg_loss = buy_trades[buy_trades['PNL'] < 0]['Daily_PNL'].mean() if len(buy_trades[buy_trades['PNL'] < 0]) > 0 else 0
+                buy_profit_factor = abs(buy_avg_win * buy_winning) / abs(buy_avg_loss * len(buy_trades[buy_trades['PNL'] < 0])) if len(buy_trades[buy_trades['PNL'] < 0]) > 0 else float('inf')
                 
-                st.write("**📈 BUY Trades:**")
-                st.write(f"• Trades: {len(buy_trades)}")
-                st.write(f"• Win Rate: {buy_win_rate:.1f}%")
-                st.write(f"• Profit Factor: {buy_profit_factor:.2f}")
-            else:
-                st.write("**📈 BUY Trades:** No data")
+                st.markdown('<div style="background: #ecfdf5; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">', unsafe_allow_html=True)
+                st.markdown('<div style="font-weight: 600; color: #065f46; margin-bottom: 0.5rem;">📈 BUY Trades</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="font-size: 0.875rem;">Trades: {len(buy_trades):,} | Win Rate: {buy_win_rate:.1f}% | PF: {buy_profit_factor:.2f}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            st.write("---")
-            
-            # Sell trades analysis
+            # Sell analysis
             sell_trades = df_filtered[df_filtered['Trade_Direction'] == 'Sell']
             if len(sell_trades) > 0:
                 sell_winning = len(sell_trades[sell_trades['PNL'] > 0])
-                sell_losing = len(sell_trades[sell_trades['PNL'] < 0])
-                sell_win_rate = (sell_winning / len(sell_trades)) * 100 if len(sell_trades) > 0 else 0
-                
+                sell_win_rate = (sell_winning / len(sell_trades)) * 100
                 sell_avg_win = sell_trades[sell_trades['PNL'] > 0]['Daily_PNL'].mean() if sell_winning > 0 else 0
-                sell_avg_loss = sell_trades[sell_trades['PNL'] < 0]['Daily_PNL'].mean() if sell_losing > 0 else 0
-                sell_profit_factor = abs(sell_avg_win * sell_winning) / abs(sell_avg_loss * sell_losing) if sell_losing > 0 else float('inf')
+                sell_avg_loss = sell_trades[sell_trades['PNL'] < 0]['Daily_PNL'].mean() if len(sell_trades[sell_trades['PNL'] < 0]) > 0 else 0
+                sell_profit_factor = abs(sell_avg_win * sell_winning) / abs(sell_avg_loss * len(sell_trades[sell_trades['PNL'] < 0])) if len(sell_trades[sell_trades['PNL'] < 0]) > 0 else float('inf')
                 
-                st.write("**📉 SELL Trades:**")
-                st.write(f"• Trades: {len(sell_trades)}")
-                st.write(f"• Win Rate: {sell_win_rate:.1f}%")
-                st.write(f"• Profit Factor: {sell_profit_factor:.2f}")
-            else:
-                st.write("**📉 SELL Trades:** No data")
+                st.markdown('<div style="background: #fef2f2; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">', unsafe_allow_html=True)
+                st.markdown('<div style="font-weight: 600; color: #991b1b; margin-bottom: 0.5rem;">📉 SELL Trades</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="font-size: 0.875rem;">Trades: {len(sell_trades):,} | Win Rate: {sell_win_rate:.1f}% | PF: {sell_profit_factor:.2f}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.write("**Rastreador column not found**")
-            st.write("Cannot analyze Buy vs Sell")
-    
-    st.markdown("---")
+            st.markdown('<div style="color: #6b7280; font-style: italic;">Rastreador column not available</div>', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     # Strategy Performance Analysis
-    st.header("🎯 Strategy Performance Analysis")
+    st.markdown('<div class="section-header"><h2>🎯 Strategy Performance Analysis</h2></div>', unsafe_allow_html=True)
     
     if 'Rastreador' in df_filtered.columns:
-        # Extract strategy from Rastreador text (Corpo, Pavio, GAP, Movimento)
         def extract_strategy(rastreador_text):
             text = str(rastreador_text)
             if 'Corpo' in text:
@@ -585,11 +745,10 @@ def main():
                 })
         
         if strategy_stats:
-            # Create DataFrame for strategy performance
             strategy_df = pd.DataFrame(strategy_stats)
             strategy_df = strategy_df.sort_values('Total_PNL', ascending=False)
             
-            # Display strategy performance table
+            # Strategy performance table
             st.dataframe(
                 strategy_df.style.format({
                     'Win_Rate': '{:.1f}%',
@@ -599,10 +758,10 @@ def main():
                     'Avg_Loss': '${:,.2f}'
                 }).background_gradient(subset=['Total_PNL'], cmap='RdYlGn'),
                 use_container_width=True,
-                height=200
+                height=250
             )
             
-            # Strategy summary
+            # Strategy summary metrics
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -610,7 +769,8 @@ def main():
                 st.metric(
                     label="🏆 Best Strategy",
                     value=best_strategy['Strategy'],
-                    delta=f"${best_strategy['Total_PNL']:,.2f}"
+                    delta=f"${best_strategy['Total_PNL']:,.2f}",
+                    help="Strategy with highest total profit"
                 )
             
             with col2:
@@ -618,45 +778,43 @@ def main():
                 st.metric(
                     label="🎯 Highest Win Rate",
                     value=f"{highest_win_rate['Win_Rate']:.1f}%",
-                    delta=highest_win_rate['Strategy']
+                    delta=highest_win_rate['Strategy'],
+                    help="Strategy with best success rate"
                 )
             
             with col3:
                 best_profit_factor = strategy_df.loc[strategy_df['Profit_Factor'].idxmax()]
                 st.metric(
-                    label="⚖️ Best Profit Factor",
+                    label="⚖️ Best Risk/Reward",
                     value=f"{best_profit_factor['Profit_Factor']:.2f}",
-                    delta=best_profit_factor['Strategy']
+                    delta=best_profit_factor['Strategy'],
+                    help="Strategy with best profit factor"
                 )
             
-            # Export button for strategy performance
-            strategy_excel_data = export_to_excel(strategy_df)
-            st.download_button(
-                label="📥 Export Strategy Performance to Excel",
-                data=strategy_excel_data,
-                file_name=f"strategy_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        else:
-            st.write("No strategy data found")
-    else:
-        st.write("Rastreador column not found - cannot analyze strategies")
+            # Export strategy data
+            col1, col2 = st.columns([3, 1])
+            with col2:
+                strategy_excel_data = export_to_excel(strategy_df)
+                st.download_button(
+                    label="📥 Export Strategy Data",
+                    data=strategy_excel_data,
+                    file_name=f"strategy_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
     
-    st.markdown("---")
-    
-    # Asset Performance Table
-    st.header("📊 Asset Performance Analysis")
+    # Asset Performance Analysis
+    st.markdown('<div class="section-header"><h2>📊 Asset Performance Analysis</h2></div>', unsafe_allow_html=True)
     
     if len(df_filtered) > 0:
-        # Calculate comprehensive performance metrics by Ativo
+        # Calculate comprehensive asset performance
         ativo_stats = df_filtered.groupby('Ativo').agg({
             'Daily_PNL': ['sum', 'count', 'mean', 'std'],
             'PNL': [
-                lambda x: (x > 0).sum(),  # Winning trades
-                lambda x: (x < 0).sum(),  # Losing trades
-                lambda x: (x > 0).sum() / len(x) * 100,  # Win rate
-                'max',  # Best trade
-                'min'   # Worst trade
+                lambda x: (x > 0).sum(),
+                lambda x: (x < 0).sum(),
+                lambda x: (x > 0).sum() / len(x) * 100,
+                'max',
+                'min'
             ]
         }).round(2)
         
@@ -666,17 +824,16 @@ def main():
             'Winning_Trades', 'Losing_Trades', 'Win_Rate', 'Best_Trade', 'Worst_Trade'
         ]
         
-        # Calculate additional metrics
+        # Calculate profit factor
         ativo_stats['Profit_Factor'] = np.where(
             ativo_stats['Losing_Trades'] > 0,
             (ativo_stats['Winning_Trades'] * ativo_stats['Avg_PNL']) / abs(ativo_stats['Losing_Trades'] * ativo_stats['Avg_PNL']),
             np.inf
         )
         
-        # Sort by total PNL
         ativo_stats = ativo_stats.sort_values('Total_PNL', ascending=False)
         
-        # Display the table
+        # Asset performance table
         st.dataframe(
             ativo_stats.style.format({
                 'Total_PNL': '${:,.2f}',
@@ -691,30 +848,30 @@ def main():
             height=400
         )
         
-        # Add download button for asset performance
-        asset_excel_data = export_to_excel(ativo_stats.reset_index())
-        st.download_button(
-            label="📥 Export Asset Performance to Excel",
-            data=asset_excel_data,
-            file_name=f"asset_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    
-    st.markdown("---")
+        # Export asset data
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            asset_excel_data = export_to_excel(ativo_stats.reset_index())
+            st.download_button(
+                label="📥 Export Asset Data",
+                data=asset_excel_data,
+                file_name=f"asset_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
     
     # Trade List
-    st.header("📝 Trade List")
+    st.markdown('<div class="section-header"><h2>📝 Detailed Trade Log</h2></div>', unsafe_allow_html=True)
     
-    # Display columns selector
+    # Column selector
     display_columns = st.multiselect(
-        "Select columns to display:",
+        "📋 Select columns to display:",
         options=df_filtered.columns.tolist(),
         default=['Loop_Date', 'Ativo', 'Gatilho_Dia', 'Lot_Size', 'PNL', 'Daily_PNL', 'Cumulative_Balance'],
-        help="Choose which columns to show in the trade list"
+        help="Choose which data columns to show in the trade log"
     )
     
     if display_columns:
-        # Format the dataframe for display
+        # Format display dataframe
         display_df = df_filtered[display_columns].copy()
         
         # Format numeric columns
@@ -725,27 +882,33 @@ def main():
             elif col == 'Lot_Size':
                 display_df[col] = display_df[col].apply(lambda x: f"{x:,}" if pd.notna(x) else "")
         
+        # Display trade log
         st.dataframe(
             display_df,
             use_container_width=True,
-            height=400
+            height=450
         )
         
-        # Export button
-        excel_data = export_to_excel(df_filtered)
-        st.download_button(
-            label="📥 Export Trade List to Excel",
-            data=excel_data,
-            file_name=f"backtesting_trades_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        # Export trade log
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            excel_data = export_to_excel(df_filtered)
+            st.download_button(
+                label="📥 Export Trade Log",
+                data=excel_data,
+                file_name=f"trading_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
     
     # Footer
     st.markdown("---")
     st.markdown(
         """
-        <div style='text-align: center; color: gray;'>
-        <p>📈 Backtesting Dashboard | Built with Streamlit</p>
+        <div style='text-align: center; padding: 2rem; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 10px; margin-top: 2rem;'>
+            <h4 style='color: #64748b; margin: 0;'>📊 Trading Performance Dashboard</h4>
+            <p style='color: #94a3b8; margin: 0.5rem 0 0 0; font-size: 0.875rem;'>
+                Advanced analytics platform for portfolio performance analysis
+            </p>
         </div>
         """,
         unsafe_allow_html=True
