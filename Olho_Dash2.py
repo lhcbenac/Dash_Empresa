@@ -438,7 +438,7 @@ def main():
     # Additional Statistics
     st.header("📋 Detailed Statistics")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.subheader("💹 Trade Statistics")
@@ -458,9 +458,8 @@ def main():
         if avg_loss != 0:
             profit_factor = abs(avg_win * winning_trades) / abs(avg_loss * losing_trades)
             st.write(f"**Profit Factor:** {profit_factor:.2f}")
-        
-        st.markdown("---")
-        
+    
+    with col2:
         st.subheader("📊 Risk Metrics")
         
         # Sharpe-like ratio (simplified)
@@ -482,44 +481,53 @@ def main():
         st.write(f"**Best Trade:** ${best_trade:,.2f}")
         st.write(f"**Worst Trade:** ${worst_trade:,.2f}")
     
-    with col2:
-        st.subheader("🥇 Top 5 Best Assets")
+    with col3:
+        st.subheader("🔄 Buy vs Sell Analysis")
         
-        # Calculate performance by Ativo
-        if len(df_filtered) > 0:
-            ativo_performance = df_filtered.groupby('Ativo').agg({
-                'Daily_PNL': ['sum', 'count', 'mean'],
-                'PNL': lambda x: (x > 0).sum() / len(x) * 100  # Win rate
-            }).round(2)
+        # Check if we have Entradas column to differentiate Buy/Sell
+        if 'Entradas' in df_filtered.columns:
+            # Buy trades analysis
+            buy_trades = df_filtered[df_filtered['Entradas'] == 'Buy']
+            if len(buy_trades) > 0:
+                buy_winning = len(buy_trades[buy_trades['PNL'] > 0])
+                buy_losing = len(buy_trades[buy_trades['PNL'] < 0])
+                buy_win_rate = (buy_winning / len(buy_trades)) * 100 if len(buy_trades) > 0 else 0
+                
+                buy_avg_win = buy_trades[buy_trades['PNL'] > 0]['Daily_PNL'].mean() if buy_winning > 0 else 0
+                buy_avg_loss = buy_trades[buy_trades['PNL'] < 0]['Daily_PNL'].mean() if buy_losing > 0 else 0
+                buy_profit_factor = abs(buy_avg_win * buy_winning) / abs(buy_avg_loss * buy_losing) if buy_losing > 0 else float('inf')
+                
+                st.write("**📈 BUY Trades:**")
+                st.write(f"• Trades: {len(buy_trades)}")
+                st.write(f"• Win Rate: {buy_win_rate:.1f}%")
+                st.write(f"• Profit Factor: {buy_profit_factor:.2f}")
+            else:
+                st.write("**📈 BUY Trades:** No data")
             
-            # Flatten column names
-            ativo_performance.columns = ['Total_PNL', 'Trade_Count', 'Avg_PNL', 'Win_Rate']
-            ativo_performance = ativo_performance.sort_values('Total_PNL', ascending=False)
+            st.write("---")
             
-            # Top 5 Best Performers
-            top_5 = ativo_performance.head(5)
-            for i, (ativo, data) in enumerate(top_5.iterrows(), 1):
-                st.write(f"**{i}. {ativo}**: ${data['Total_PNL']:,.2f} 💼 {data['Trade_Count']:.0f} trades | 📈 {data['Win_Rate']:.1f}% win rate")
-            
-            if len(top_5) == 0:
-                st.write("No profitable assets found")
+            # Sell trades analysis
+            sell_trades = df_filtered[df_filtered['Entradas'] == 'Sell']
+            if len(sell_trades) > 0:
+                sell_winning = len(sell_trades[sell_trades['PNL'] > 0])
+                sell_losing = len(sell_trades[sell_trades['PNL'] < 0])
+                sell_win_rate = (sell_winning / len(sell_trades)) * 100 if len(sell_trades) > 0 else 0
+                
+                sell_avg_win = sell_trades[sell_trades['PNL'] > 0]['Daily_PNL'].mean() if sell_winning > 0 else 0
+                sell_avg_loss = sell_trades[sell_trades['PNL'] < 0]['Daily_PNL'].mean() if sell_losing > 0 else 0
+                sell_profit_factor = abs(sell_avg_win * sell_winning) / abs(sell_avg_loss * sell_losing) if sell_losing > 0 else float('inf')
+                
+                st.write("**📉 SELL Trades:**")
+                st.write(f"• Trades: {len(sell_trades)}")
+                st.write(f"• Win Rate: {sell_win_rate:.1f}%")
+                st.write(f"• Profit Factor: {sell_profit_factor:.2f}")
+            else:
+                st.write("**📉 SELL Trades:** No data")
         else:
-            st.write("No data available for rankings")
-        
-        st.markdown("---")
-        
-        st.subheader("📉 Top 5 Worst Assets")
-        
-        if len(df_filtered) > 0:
-            # Top 5 Worst Performers
-            bottom_5 = ativo_performance.tail(5)
-            for i, (ativo, data) in enumerate(bottom_5.iterrows(), 1):
-                st.write(f"**{i}. {ativo}**: ${data['Total_PNL']:,.2f} 💼 {data['Trade_Count']:.0f} trades | 📈 {data['Win_Rate']:.1f}% win rate")
-            
-            if len(bottom_5) == 0:
-                st.write("No losing assets found")
-        else:
-            st.write("No data available for asset rankings")
+            st.write("**Entradas column not found**")
+            st.write("Cannot analyze Buy vs Sell")
+            st.write("Available columns:")
+            st.write(list(df_filtered.columns))
     
     st.markdown("---")
     
