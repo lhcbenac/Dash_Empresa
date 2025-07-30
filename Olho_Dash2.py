@@ -299,12 +299,9 @@ def calculate_drawdown(cumulative_pnl):
     drawdown = cumulative_pnl - peak
     max_drawdown = drawdown.min()
     max_drawdown_idx = drawdown.idxmin()
-    peak_value = peak.iloc[max_drawdown_idx]
     
-    if peak_value != 0:
-        max_drawdown_pct = (max_drawdown / peak_value) * 100
-    else:
-        max_drawdown_pct = 0
+    # Calculate drawdown percentage based on initial capital (50,000)
+    max_drawdown_pct = (max_drawdown / 50000) * 100
     
     return drawdown, max_drawdown, max_drawdown_pct, peak
 
