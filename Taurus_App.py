@@ -456,7 +456,7 @@ elif page == "👤 Assessor View":
             with col1:
                 st.metric("Total Revenue", format_currency(total_revenue))
             with col2:
-                st.metric("Comissão", PagoTaurus)
+                st.metric("Comissão", format_currency(PagoTaurus))
             with col3:
                 st.metric("Total Transactions", total_transactions)
             with col4:
