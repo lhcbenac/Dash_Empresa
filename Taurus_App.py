@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import calendar
 
---- CONFIG ---
+#--- CONFIG ---
 st.set_page_config(
 page_title="Taurus Analytics Dashboard",
 layout="wide",
@@ -21,7 +21,7 @@ st.markdown("""
 <style> .main-header { font-size: 2.5rem; font-weight: bold; color: #1f77b4; text-align: center; margin-bottom: 2rem; } .metric-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 10px; color: white; text-align: center; margin: 0.5rem 0; } .stSelectbox > div > div { background-color: #f0f2f6; } .profit-positive { color: #28a745; font-weight: bold; } .profit-negative { color: #dc3545; font-weight: bold; } </style>
 """, unsafe_allow_html=True)
 
---- SIDEBAR NAVIGATION ---
+#--- SIDEBAR NAVIGATION ---
 st.sidebar.title("🚀 Taurus Analytics")
 page = st.sidebar.radio("Navigation", [
 "📤 Upload",
@@ -31,11 +31,11 @@ page = st.sidebar.radio("Navigation", [
 "📈 Performance Analytics"
 ])
 
---- SESSION STORAGE ---
+#--- SESSION STORAGE ---
 if "df_taurus" not in st.session_state:
 st.session_state["df_taurus"] = None
 
---- HELPER FUNCTIONS ---
+#--- HELPER FUNCTIONS ---
 def parse_chave_to_date(chave):
 """Convert Chave format (MM_YYYY) to datetime"""
 try:
@@ -80,7 +80,7 @@ fig = go.Figure(go.Indicator(
 ))
 fig.update_layout(height=300)
 return fig
---- UPLOAD PAGE ---
+#--- UPLOAD PAGE ---
 if page == "📤 Upload":
 st.markdown('<h1 class="main-header">📤 Upload & Data Management</h1>', unsafe_allow_html=True)
 
@@ -160,7 +160,7 @@ if uploaded_file:
             
     except Exception as e:
         st.error(f\"❌ Error processing file: {e}\")
---- EXECUTIVE DASHBOARD ---
+#--- EXECUTIVE DASHBOARD ---
 elif page == "📊 Executive Dashboard":
 st.markdown('<h1 class="main-header">📊 Executive Dashboard</h1>', unsafe_allow_html=True)
 
@@ -267,7 +267,7 @@ if selected_chaves:
         st.plotly_chart(fig_margin, use_container_width=True)
 else:
     st.info(\"Please select at least one time period to display the dashboard.\")
---- MACRO VIEW PAGE ---
+#--- MACRO VIEW PAGE ---
 elif page == "🌍 Macro View":
 st.markdown('<h1 class="main-header">🌍 Macro View - Assessor Performance</h1>', unsafe_allow_html=True)
 
@@ -380,7 +380,7 @@ if selected_chaves:
             f\"Top_Performers_{'_'.join(map(str, selected_chaves))}.csv\",
             \"text/csv\"
         )
---- ASSESSOR VIEW PAGE ---
+#--- ASSESSOR VIEW PAGE ---
 elif page == "👤 Assessor View":
 st.markdown('<h1 class="main-header">👤 Individual Assessor Analysis</h1>', unsafe_allow_html=True)
 
@@ -515,7 +515,7 @@ if selected_chaves and selected_assessor:
                 f\"{selected_assessor}_Performance_Summary.csv\",
                 \"text/csv\"
             )
---- PERFORMANCE ANALYTICS ---
+#--- PERFORMANCE ANALYTICS ---
 elif page == "📈 Performance Analytics":
 st.markdown('<h1 class="main-header">📈 Advanced Performance Analytics</h1>', unsafe_allow_html=True)
 
