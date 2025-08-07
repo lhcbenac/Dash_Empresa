@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import calendar
 from io import BytesIO
 
@@ -17,6 +17,8 @@ st.set_page_config(
 )
 
 # --- CSS PERSONALIZADO ---
+# ATENÇÃO: Classes como .st-emotion-cache-xxxx são internas do Streamlit e podem mudar com atualizações.
+# Se houver erros ou quebras de estilo, considere comentar este bloco temporariamente.
 st.markdown("""
 <style>
     /* Estilos Gerais */
@@ -154,6 +156,7 @@ def display_kpis(df, is_assessor_view=False):
         total_transactions = len(df)
         total_pix = df["Pix_Assessor"].sum()
         total_profit = df["Lucro_Empresa"].sum()
+        # Calculo de Avg Transaction para Assessor View
         avg_transaction = total_commission / total_transactions if total_transactions > 0 else 0
 
         with col1:
@@ -163,11 +166,10 @@ def display_kpis(df, is_assessor_view=False):
         with col3:
             st.metric("Total Transações", total_transactions)
         with col4:
-            st.metric("Pix Assessor", format_currency(total_pix))
+            st.metric("Média Transação", format_currency(avg_transaction)) # Adicionado aqui para exibição
         with col5:
             st.metric("Lucro Gerado", format_currency(total_profit))
-        # Adicionar o Avg Transaction como um 6º KPI, talvez em uma nova linha ou otimizar o espaço
-        # Para manter o layout 5 colunas, decidimos não adicionar um 6º card diretamente aqui, mas garantir que esteja no export.
+
 
         return total_revenue, total_commission, total_transactions, total_pix, total_profit, avg_transaction
 
@@ -190,6 +192,26 @@ def display_kpis(df, is_assessor_view=False):
         with col5:
             st.metric("Assessores Ativos", active_assessors)
         return None # Não retorna valores para o dashboard executivo
+
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.title("🚀 Taurus Analytics")
+
+# Geração do rádio button da navegação com tratamento de erro
+# A variável 'page' é inicializada aqui para garantir que ela sempre tenha um valor,
+# prevenindo o NameError caso st.sidebar.radio falhe.
+page = "📤 Upload" # Valor padrão para 'page'
+
+try:
+    page = st.sidebar.radio("Navigation", [
+        "📤 Upload",
+        "📊 Executive Dashboard",
+        "🌍 Macro View",
+        "👤 Assessor View",
+        "📈 Performance Analytics"
+    ])
+except Exception as e:
+    st.error(f"⚠️ Erro ao carregar o menu de navegação. Exibindo a página de Upload por padrão. Detalhes: {e}")
+    # 'page' irá manter seu valor padrão de "📤 Upload" definido acima.
 
 # --- PÁGINA DE UPLOAD ---
 if page == "📤 Upload":
@@ -518,10 +540,12 @@ elif page == "👤 Assessor View":
 
             fig_monthly_perf = make_subplots(specs=[[{"secondary_y": True}]])
             fig_monthly_perf.add_trace(go.Bar(x=monthly_performance['Chave'], y=monthly_performance['Comissão'], name='Comissão (R\$)'), secondary_y=False)
-            fig_monthly_perf.add_trace(go.Scatter(x=monthly_performance['Chave'], y=monthly_performance['Transacoes'], name='Transações', mode='lines+markers'), secondary_y=True)
+            fig_monthly_perf.add_trace(go.Scatter(x=monthly_performance['Chave'], y=monthly_performance['Lucro_Empresa'], name='Lucro (R\$)', mode='lines+markers'), secondary_y=False)
+            fig_monthly_perf.add_trace(go.Scatter(x=monthly_performance['Chave'], y=monthly_performance['Transacoes'], name='Transações', mode='lines', line=dict(color='#ff7f0e', dash='dot')), secondary_y=True)
+
             fig_monthly_perf.update_layout(title_text=f"Evolução Mensal de {selected_assessor}", hovermode="x unified")
             fig_monthly_perf.update_xaxes(title_text="Período")
-            fig_monthly_perf.update_yaxes(title_text="Comissão (R\$)", secondary_y=False)
+            fig_monthly_perf.update_yaxes(title_text="Valor (R\$)", secondary_y=False)
             fig_monthly_perf.update_yaxes(title_text="Número de Transações", secondary_y=True)
             st.plotly_chart(fig_monthly_perf, use_container_width=True)
 
