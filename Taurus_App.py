@@ -447,7 +447,8 @@ elif page == "👤 Assessor View":
             
             col1, col2, col3, col4 = st.columns(4)
 
-            total_revenue = df_filtered["Comissão"].sum()
+            total_revenue = df_filtered["Receita Bruta"].sum()
+            PagoTaurus = df_filtered["Comissão"].sum()
             total_transactions = len(df_filtered)
             total_pix = df_filtered["Pix_Assessor"].sum()
             total_profit = df_filtered["Lucro_Empresa"].sum()
@@ -455,10 +456,12 @@ elif page == "👤 Assessor View":
             with col1:
                 st.metric("Total Revenue", format_currency(total_revenue))
             with col2:
-                st.metric("Total Transactions", total_transactions)
+                st.metric("Comissão", PagoTaurus)
             with col3:
-                st.metric("Total Pix Assessor", format_currency(total_pix))
+                st.metric("Total Transactions", total_transactions)
             with col4:
+                st.metric("Total Pix Assessor", format_currency(total_pix))
+            with col5:
                 st.metric("Generated Profit", format_currency(total_profit))
             
             # Performance over time
