@@ -470,7 +470,7 @@ elif page == "👤 Assessor View":
             monthly_performance = monthly_performance.reset_index() 
            
             # Category breakdown
-            financial_cols = ["Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
+            financial_cols = ["Receita Bruta" , "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
             category_summary = df_filtered.groupby("Categoria")[financial_cols].sum().reset_index()
             
             # Add transaction count per category
