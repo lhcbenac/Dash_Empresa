@@ -322,7 +322,7 @@ elif page == "🌍 Macro View":
         df_filtered = df[df["Chave"].isin(selected_chaves)]
         
         # Summary calculations
-        financial_cols = ["Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
+        financial_cols = ["Receita Bruta" , "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
         summary_df = df_filtered.groupby("AssessorReal")[financial_cols].sum().reset_index()
         
         # Add calculated metrics
