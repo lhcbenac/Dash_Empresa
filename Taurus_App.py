@@ -535,7 +535,7 @@ elif page == "👤 Assessor View":
                 # Performance summary
                 performance_summary = pd.DataFrame({
                     'Metric': ['Total Revenue', 'Total Transactions', 'Avg Transaction', 'Total Profit'],
-                    'Value': [total_revenue, total_transactions, avg_transaction, total_profit]
+                    'Value': [total_revenue, total_transactions, Avg_Transaction, total_profit]
                 })
                 csv_perf = performance_summary.to_csv(index=False).encode('utf-8')
                 st.download_button(
