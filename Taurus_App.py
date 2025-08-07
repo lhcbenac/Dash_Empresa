@@ -4,238 +4,284 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 import calendar
+from io import BytesIO
 
-# --- CONFIG ---
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Taurus Analytics Dashboard", 
-    layout="wide", 
+    page_title="Taurus Analytics Dashboard",
+    layout="wide",
     initial_sidebar_state="expanded",
     page_icon="📊"
 )
 
-# Custom CSS for better styling
+# --- CSS PERSONALIZADO ---
 st.markdown("""
 <style>
+    /* Estilos Gerais */
     .main-header {
-        font-size: 2.5rem;
+        font-size: 2.8rem;
         font-weight: bold;
-        color: #1f77b4;
+        color: #1f77b4; /* Azul Taurus */
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 2.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e0e0e0;
     }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
+    .st-emotion-cache-1jm6gjm { /* Botões */
+        background-color: #667eea;
+        color: white;
+        border-radius: 8px;
+        border: none;
+        padding: 0.7rem 1.2rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    .st-emotion-cache-1jm6gjm:hover {
+        background-color: #5a6ed1;
+    }
+
+    /* Cartões de Métrica */
+    div.st-emotion-cache-nahz7x { /* Container do st.metric */
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Gradiente Azul/Roxo */
+        padding: 1.2rem;
+        border-radius: 12px;
         color: white;
         text-align: center;
         margin: 0.5rem 0;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease-in-out;
     }
+    div.st-emotion-cache-nahz7x:hover {
+        transform: translateY(-5px);
+    }
+    div.st-emotion-cache-nahz7x p { /* Título e Valor do st.metric */
+        color: white !important;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    div.st-emotion-cache-nahz7x .st-emotion-cache-v06ywu { /* Valor do st.metric */
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    /* Outros Elementos */
     .stSelectbox > div > div {
-        background-color: #f0f2f6;
+        background-color: #f0f2f6; /* Cor de fundo para selectbox */
+        border-radius: 8px;
     }
     .profit-positive {
-        color: #28a745;
+        color: #28a745; /* Verde */
         font-weight: bold;
     }
     .profit-negative {
-        color: #dc3545;
+        color: #dc3545; /* Vermelho */
         font-weight: bold;
+    }
+    .stAlert { /* Mensagens de Alerta */
+        border-radius: 8px;
+    }
+    h3 {
+        color: #333;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.5rem;
+    }
+    .st-emotion-cache-1c7y2c9 { /* Título da barra lateral */
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #1f77b4;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.title("🚀 Taurus Analytics")
-page = st.sidebar.radio("Navigation", [
-    "📤 Upload", 
-    "📊 Executive Dashboard", 
-    "🌍 Macro View", 
-    "👤 Assessor View", 
-    "📈 Performance Analytics"
-])
-
-# --- SESSION STORAGE ---
+# --- ESTADO DA SESSÃO ---
 if "df_taurus" not in st.session_state:
     st.session_state["df_taurus"] = None
 
-# --- HELPER FUNCTIONS ---
+# --- FUNÇÕES AUXILIARES ---
 def parse_chave_to_date(chave):
-    """Convert Chave format (MM_YYYY) to datetime"""
+    """Converte o formato Chave (MM_AAAA) para datetime."""
     try:
-        month, year = chave.split('_')
-        return datetime(int(year), int(month), 1)
-    except:
+        month, year = map(int, chave.split('_'))
+        return datetime(year, month, 1)
+    except (ValueError, AttributeError):
         return None
 
 def format_currency(value):
-    """Format currency with proper formatting"""
-    return f"R$ {value:,.2f}"
+    """Formata um valor numérico para o padrão monetário brasileiro."""
+    return f"R\$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def calculate_growth_rate(current, previous):
-    """Calculate growth rate between two values"""
+    """Calcula a taxa de crescimento entre dois valores."""
     if previous == 0:
         return 0
     return ((current - previous) / previous) * 100
 
-def create_gauge_chart(value, title, max_val=None):
-    """Create a gauge chart for KPIs"""
-    if max_val is None:
-        max_val = value * 1.5
-    
-    fig = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
-        value = value,
-        domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': title},
-        gauge = {
-            'axis': {'range': [None, max_val]},
-            'bar': {'color': "darkblue"},
-            'steps': [
-                {'range': [0, max_val*0.5], 'color': "lightgray"},
-                {'range': [max_val*0.5, max_val*0.8], 'color': "gray"}
-            ],
-            'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': max_val*0.9
-            }
-        }
-    ))
-    fig.update_layout(height=300)
-    return fig
+def load_data(uploaded_file):
+    """Carrega e pré-processa o arquivo Excel."""
+    try:
+        df = pd.read_excel(uploaded_file, sheet_name="Taurus", engine="openpyxl")
 
-# --- UPLOAD PAGE ---
+        # Colunas obrigatórias, incluindo "Receita Bruta" que é usada mais tarde
+        required_cols = {"Chave", "AssessorReal", "Categoria", "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa", "Receita Bruta"}
+
+        if not required_cols.issubset(df.columns):
+            missing_cols = required_cols - set(df.columns)
+            st.error(f"❌ Erro: Colunas obrigatórias ausentes: {', '.join(missing_cols)}. Verifique seu arquivo.")
+            return None
+
+        # Pré-processamento
+        df['Chave_Date'] = df['Chave'].apply(parse_chave_to_date)
+        df['Month_Year'] = df['Chave_Date'].dt.strftime('%Y-%m')
+
+        return df
+
+    except Exception as e:
+        st.error(f"❌ Erro ao processar o arquivo: {e}. Certifique-se de que é um arquivo Excel válido e contém a aba 'Taurus'.")
+        return None
+
+def display_kpis(df, is_assessor_view=False):
+    """Exibe os cards de KPIs de forma padronizada."""
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    if is_assessor_view:
+        total_revenue = df["Receita Bruta"].sum()
+        total_commission = df["Comissão"].sum()
+        total_transactions = len(df)
+        total_pix = df["Pix_Assessor"].sum()
+        total_profit = df["Lucro_Empresa"].sum()
+        avg_transaction = total_commission / total_transactions if total_transactions > 0 else 0
+
+        with col1:
+            st.metric("Receita Bruta", format_currency(total_revenue))
+        with col2:
+            st.metric("Comissão Total", format_currency(total_commission))
+        with col3:
+            st.metric("Total Transações", total_transactions)
+        with col4:
+            st.metric("Pix Assessor", format_currency(total_pix))
+        with col5:
+            st.metric("Lucro Gerado", format_currency(total_profit))
+        # Adicionar o Avg Transaction como um 6º KPI, talvez em uma nova linha ou otimizar o espaço
+        # Para manter o layout 5 colunas, decidimos não adicionar um 6º card diretamente aqui, mas garantir que esteja no export.
+
+        return total_revenue, total_commission, total_transactions, total_pix, total_profit, avg_transaction
+
+    else: # Executive Dashboard
+        total_commission = df["Comissão"].sum()
+        total_pix = df["Pix_Assessor"].sum()
+        total_profit = df["Lucro_Empresa"].sum()
+        total_transactions = len(df)
+        avg_transaction = total_commission / total_transactions if total_transactions > 0 else 0
+        active_assessors = df["AssessorReal"].nunique()
+
+        with col1:
+            st.metric("Comissão Total", format_currency(total_commission))
+        with col2:
+            st.metric("Total Pix Assessor", format_currency(total_pix))
+        with col3:
+            st.metric("Lucro da Empresa", format_currency(total_profit))
+        with col4:
+            st.metric("Média Transação", format_currency(avg_transaction))
+        with col5:
+            st.metric("Assessores Ativos", active_assessors)
+        return None # Não retorna valores para o dashboard executivo
+
+# --- PÁGINA DE UPLOAD ---
 if page == "📤 Upload":
-    st.markdown('<h1 class="main-header">📤 Upload & Data Management</h1>', unsafe_allow_html=True)
-    
+    st.markdown('<h1 class="main-header">📤 Upload e Gestão de Dados</h1>', unsafe_allow_html=True)
+
     col1, col2 = st.columns([2, 1])
-    
+
     with col1:
         uploaded_file = st.file_uploader(
-            "Upload your Taurus Excel file", 
+            "Carregue seu arquivo Taurus Excel",
             type=["xlsx"],
-            help="File must contain a 'Taurus' sheet with the required columns"
+            help="O arquivo deve conter uma aba chamada 'Taurus' com as colunas obrigatórias."
         )
-    
+
     with col2:
-        st.info("📋 **Required Columns:**\n- Chave\n- AssessorReal\n- Categoria\n- Comissão\n- Tributo_Retido\n- Pix_Assessor\n- Lucro_Empresa")
-    
+        st.info("📋 **Colunas Obrigatórias:**\n- Chave\n- AssessorReal\n- Categoria\n- Comissão\n- Tributo_Retido\n- Pix_Assessor\n- Lucro_Empresa\n- Receita Bruta")
+
     if uploaded_file:
-        try:
-            # Read specifically the 'Taurus' sheet
-            df_taurus = pd.read_excel(uploaded_file, sheet_name="Taurus", engine="openpyxl")
-            
-            # Check if required columns exist
-            required_cols = {"Chave", "AssessorReal", "Categoria", "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"}
-            
-            if not required_cols.issubset(df_taurus.columns):
-                missing_cols = required_cols - set(df_taurus.columns)
-                st.error(f"❌ Missing required columns: {', '.join(missing_cols)}")
-            else:
-                # Data preprocessing
-                df_taurus['Chave_Date'] = df_taurus['Chave'].apply(parse_chave_to_date)
-                df_taurus['Month_Year'] = df_taurus['Chave_Date'].dt.strftime('%Y-%m')
-                
-                # Store data in session state
-                st.session_state["df_taurus"] = df_taurus
-                st.success("✅ Data successfully loaded and processed!")
-                
-                # Enhanced data overview
-                st.markdown("### 📊 Data Overview")
-                col1, col2, col3, col4 = st.columns(4)
-                
-                with col1:
-                    st.metric("Total Transactions", f"{len(df_taurus):,}")
-                with col2:
-                    st.metric("Unique Assessors", df_taurus["AssessorReal"].nunique())
-                with col3:
-                    st.metric("Time Periods", df_taurus["Chave"].nunique())
-                with col4:
-                    total_revenue = df_taurus["Comissão"].sum()
-                    st.metric("Total Revenue", format_currency(total_revenue))
-                
-                # Data quality checks
-                st.markdown("### 🔍 Data Quality Assessment")
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    missing_data = df_taurus.isnull().sum()
-                    if missing_data.sum() > 0:
-                        st.warning("⚠️ Missing Data Found:")
-                        st.dataframe(missing_data[missing_data > 0])
-                    else:
-                        st.success("✅ No missing data detected")
-                
-                with col2:
-                    # Date range
-                    if 'Data Receita' in df_taurus.columns:
-                        date_range = f"{df_taurus['Data Receita'].min()} to {df_taurus['Data Receita'].max()}"
-                        st.info(f"📅 **Date Range:** {date_range}")
-                    
-                    # Top categories
-                    top_categories = df_taurus['Categoria'].value_counts().head(3)
-                    st.info("🏆 **Top Categories:**\n" + "\n".join([f"• {cat}: {count}" for cat, count in top_categories.items()]))
-                
-                # Sample data with better formatting
-                st.markdown("### 👀 Sample Data Preview")
-                display_cols = ['Chave', 'AssessorReal', 'Categoria', 'Comissão', 'Pix_Assessor', 'Lucro_Empresa']
-                sample_data = df_taurus[display_cols].head(10)
-                st.dataframe(sample_data, use_container_width=True)
-                
-        except Exception as e:
-            st.error(f"❌ Error processing file: {e}")
-# --- EXECUTIVE DASHBOARD ---
+        df_taurus = load_data(uploaded_file)
+        if df_taurus is not None:
+            st.session_state["df_taurus"] = df_taurus
+            st.success("✅ Dados carregados e processados com sucesso!")
+
+            st.markdown("### 📊 Visão Geral dos Dados")
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.metric("Total Transações", f"{len(df_taurus):,}")
+            with col2:
+                st.metric("Assessores Únicos", df_taurus["AssessorReal"].nunique())
+            with col3:
+                st.metric("Períodos de Tempo", df_taurus["Chave"].nunique())
+            with col4:
+                total_commission = df_taurus["Comissão"].sum()
+                st.metric("Comissão Total", format_currency(total_commission))
+
+            st.markdown("### 🔍 Avaliação da Qualidade dos Dados")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                missing_data = df_taurus.isnull().sum()
+                if missing_data.sum() > 0:
+                    st.warning("⚠️ Dados Ausentes Encontrados:")
+                    st.dataframe(missing_data[missing_data > 0])
+                else:
+                    st.success("✅ Nenhuma dado ausente detectado.")
+
+            with col2:
+                if 'Data Receita' in df_taurus.columns:
+                    date_range = f"{df_taurus['Data Receita'].min().strftime('%d/%m/%Y')} a {df_taurus['Data Receita'].max().strftime('%d/%m/%Y')}"
+                    st.info(f"📅 **Intervalo de Datas:** {date_range}")
+
+                top_categories = df_taurus['Categoria'].value_counts().head(3)
+                st.info("🏆 **Principais Categorias:**\n" + "\n".join([f"• {cat}: {count}" for cat, count in top_categories.items()]))
+
+            st.markdown("### 👀 Pré-visualização de Amostra dos Dados")
+            display_cols = ['Chave', 'AssessorReal', 'Categoria', 'Comissão', 'Pix_Assessor', 'Lucro_Empresa', 'Receita Bruta']
+            # Filtra apenas as colunas que realmente existem no dataframe antes de exibir
+            display_cols = [col for col in display_cols if col in df_taurus.columns]
+            sample_data = df_taurus[display_cols].head(10)
+            st.dataframe(sample_data, use_container_width=True)
+
+# --- DASHBOARD EXECUTIVO ---
 elif page == "📊 Executive Dashboard":
-    st.markdown('<h1 class="main-header">📊 Executive Dashboard</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">📊 Dashboard Executivo</h1>', unsafe_allow_html=True)
 
     if st.session_state["df_taurus"] is None:
-        st.warning("Please upload the Excel file first.")
+        st.warning("🚨 Por favor, carregue o arquivo Excel na página 'Upload' primeiro.")
         st.stop()
 
     df = st.session_state["df_taurus"]
 
-    # Time Period Filter (same as Macro View)
     col1 = st.columns(1)[0]
     with col1:
-        chave_list = sorted(df["Chave"].dropna().unique())
+        chave_list = sorted(df["Chave"].dropna().unique(), key=parse_chave_to_date)
         selected_chaves = st.multiselect(
-            "🕐 Select Time Periods",
+            "🕐 Selecione os Períodos de Tempo",
             chave_list,
-            default=chave_list[-6:] if len(chave_list) >= 6 else chave_list
+            default=chave_list[-6:] if len(chave_list) >= 6 else chave_list,
+            help="Escolha os meses/anos para analisar."
         )
 
     if selected_chaves:
         df_filtered = df[df["Chave"].isin(selected_chaves)]
 
-        # KPI Cards
-        st.markdown("### 🎯 Key Performance Indicators")
-        col1, col2, col3, col4, col5 = st.columns(5)
+        st.markdown("### 🎯 Indicadores Chave de Performance (KPIs)")
+        display_kpis(df_filtered)
 
-        total_revenue = df_filtered["Comissão"].sum()
-        total_pix = df_filtered["Pix_Assessor"].sum()
-        total_profit = df_filtered["Lucro_Empresa"].sum()
-        avg_transaction = df_filtered["Comissão"].mean()
-        active_assessors = df_filtered["AssessorReal"].nunique()
-
-        with col1:
-            st.metric("Total Revenue", format_currency(total_revenue))
-        with col2:
-            st.metric("Total Pix Assessor", format_currency(total_pix))
-        with col3:
-            st.metric("Company Profit", format_currency(total_profit))
-        with col4:
-            st.metric("Avg Transaction", format_currency(avg_transaction))
-        with col5:
-            st.metric("Active Assessors", active_assessors)
-
-        # Charts Row 1
+        st.markdown("### 📈 Análise de Tendências e Distribuição")
         col1, col2 = st.columns(2)
 
         with col1:
-            # Revenue Evolution
             monthly_revenue = df_filtered.groupby('Chave')['Comissão'].sum().reset_index()
             monthly_revenue['Chave_Date'] = monthly_revenue['Chave'].apply(parse_chave_to_date)
             monthly_revenue = monthly_revenue.sort_values('Chave_Date')
@@ -244,425 +290,484 @@ elif page == "📊 Executive Dashboard":
                 monthly_revenue,
                 x='Chave',
                 y='Comissão',
-                title='📈 Revenue Evolution',
-                markers=True
+                title='📈 Evolução da Comissão Total',
+                markers=True,
+                labels={'Comissão': 'Comissão (R\$)', 'Chave': 'Período'},
+                hover_name='Chave'
             )
-            fig_revenue.update_layout(xaxis_title="Period", yaxis_title="Revenue (R$)")
+            fig_revenue.update_layout(hovermode="x unified")
             st.plotly_chart(fig_revenue, use_container_width=True)
 
         with col2:
-            # Top Assessors
-            top_assessors = df_filtered.groupby('AssessorReal')['Comissão'].sum().nlargest(10)
+            top_assessors = df_filtered.groupby('AssessorReal')['Comissão'].sum().nlargest(10).reset_index()
             fig_assessors = px.bar(
-                x=top_assessors.values,
-                y=top_assessors.index,
+                top_assessors,
+                x='Comissão',
+                y='AssessorReal',
                 orientation='h',
-                title='🏆 Top 10 Assessors by Revenue'
+                title='🏆 Top 10 Assessores por Comissão',
+                labels={'Comissão': 'Comissão (R\$)', 'AssessorReal': 'Assessor'},
+                hover_name='AssessorReal'
             )
-            fig_assessors.update_layout(xaxis_title="Revenue (R$)", yaxis_title="Assessor")
+            fig_assessors.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_assessors, use_container_width=True)
 
-        # Charts Row 2
         col1, col2 = st.columns(2)
-
         with col1:
-            # Category Distribution
-            category_dist = df_filtered.groupby('Categoria')['Comissão'].sum()
+            category_dist = df_filtered.groupby('Categoria')['Comissão'].sum().reset_index()
             fig_pie = px.pie(
-                values=category_dist.values,
-                names=category_dist.index,
-                title='🎯 Revenue Distribution by Category'
+                category_dist,
+                values='Comissão',
+                names='Categoria',
+                title='🎯 Distribuição da Comissão por Categoria',
+                hole=0.3,
+                hover_name='Categoria'
             )
             st.plotly_chart(fig_pie, use_container_width=True)
 
         with col2:
-            # Profit Margin Analysis
-            profit_margin = df_filtered.groupby('Chave').agg({
-                'Comissão': 'sum',
-                'Lucro_Empresa': 'sum'
-            }).reset_index()
-            profit_margin['Margin_Percent'] = (profit_margin['Lucro_Empresa'] / profit_margin['Comissão']) * 100
+            profit_margin = df_filtered.groupby('Chave').agg(
+                Comissão_sum=('Comissão', 'sum'),
+                Lucro_Empresa_sum=('Lucro_Empresa', 'sum')
+            ).reset_index()
+            profit_margin['Margem_Lucro_Percentual'] = (profit_margin['Lucro_Empresa_sum'] / profit_margin['Comissão_sum']) * 100
 
             fig_margin = px.bar(
                 profit_margin,
                 x='Chave',
-                y='Margin_Percent',
-                title='📊 Profit Margin by Period (%)',
-                color='Margin_Percent',
-                color_continuous_scale='RdYlGn'
+                y='Margem_Lucro_Percentual',
+                title='📊 Margem de Lucro por Período (%)',
+                color='Margem_Lucro_Percentual',
+                color_continuous_scale=px.colors.sequential.RdYlGn,
+                labels={'Margem_Lucro_Percentual': 'Margem de Lucro (%)', 'Chave': 'Período'},
+                hover_name='Chave'
             )
+            fig_margin.update_layout(yaxis_range=[0, profit_margin['Margem_Lucro_Percentual'].max() * 1.1])
             st.plotly_chart(fig_margin, use_container_width=True)
     else:
-        st.info("Please select at least one time period to display the dashboard.")
+        st.info("ℹ️ Por favor, selecione pelo menos um período de tempo para exibir o dashboard.")
 
 # --- MACRO VIEW PAGE ---
 elif page == "🌍 Macro View":
-    st.markdown('<h1 class="main-header">🌍 Macro View - Assessor Performance</h1>', unsafe_allow_html=True)
-    
+    st.markdown('<h1 class="main-header">🌍 Visão Macro - Performance dos Assessores</h1>', unsafe_allow_html=True)
+
     if st.session_state["df_taurus"] is None:
-        st.warning("Please upload the Excel file first.")
+        st.warning("🚨 Por favor, carregue o arquivo Excel na página 'Upload' primeiro.")
         st.stop()
-    
+
     df = st.session_state["df_taurus"]
-    
-    # Filters
+
     col1, col2 = st.columns(2)
     with col1:
-        chave_list = sorted(df["Chave"].dropna().unique())
+        chave_list = sorted(df["Chave"].dropna().unique(), key=parse_chave_to_date)
         selected_chaves = st.multiselect(
-            "🕐 Select Time Periods",
+            "🕐 Selecione os Períodos de Tempo",
             chave_list,
-            default=chave_list
+            default=chave_list,
+            help="Escolha os meses/anos para analisar."
         )
-    
+
     with col2:
-        min_revenue = st.number_input("💰 Minimum Revenue Filter", min_value=0.0, value=0.0, step=1000.0)
-    
+        min_revenue = st.number_input("💰 Filtro de Comissão Mínima (R\$)", min_value=0.0, value=0.0, step=1000.0,
+                                     help="Exibe apenas assessores com comissão total acima deste valor.")
+
     if selected_chaves:
         df_filtered = df[df["Chave"].isin(selected_chaves)]
-        
-        # Summary calculations
-        financial_cols = ["Receita Bruta" , "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
+
+        # Sumarização por assessor
+        financial_cols = ["Receita Bruta", "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
         summary_df = df_filtered.groupby("AssessorReal")[financial_cols].sum().reset_index()
-        
-        # Add calculated metrics
-        summary_df['Transaction_Count'] = df_filtered.groupby("AssessorReal").size().values
-        summary_df['Avg_Transaction'] = summary_df['Comissão'] / summary_df['Transaction_Count']
-        summary_df['Profit_Margin'] = (summary_df['Lucro_Empresa'] / summary_df['Comissão']) * 100
-        
-        # Filter by minimum revenue
+
+        # Adicionar métricas calculadas
+        summary_df['Total_Transacoes'] = df_filtered.groupby("AssessorReal").size().values
+        summary_df['Media_Transacao'] = summary_df['Comissão'] / summary_df['Total_Transacoes']
+        summary_df['Margem_Lucro_Percentual'] = (summary_df['Lucro_Empresa'] / summary_df['Comissão']) * 100
+        summary_df.replace([np.inf, -np.inf], np.nan, inplace=True) # Lidar com divisões por zero
+        summary_df.fillna(0, inplace=True) # Substituir NaNs por 0, se aplicável
+
+        # Filtrar por comissão mínima
         summary_df = summary_df[summary_df['Comissão'] >= min_revenue]
         summary_df = summary_df.sort_values("Comissão", ascending=False)
-        
-        # Display metrics
+
+        st.markdown("### 📊 Métricas Agregadas")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Total Assessors", len(summary_df))
+            st.metric("Total Assessores", len(summary_df))
         with col2:
-            st.metric("Total Revenue", format_currency(summary_df['Comissão'].sum()))
+            st.metric("Comissão Total", format_currency(summary_df['Comissão'].sum()))
         with col3:
-            st.metric("Avg Revenue/Assessor", format_currency(summary_df['Comissão'].mean()))
-        
-        # Enhanced table with formatting
-        st.markdown("### 📋 Assessor Performance Summary")
-        
-        # Format the display dataframe
+            st.metric("Comissão Média/Assessor", format_currency(summary_df['Comissão'].mean()))
+
+        st.markdown("### 📋 Resumo da Performance dos Assessores")
+
+        # Formatar o DataFrame para exibição
         display_df = summary_df.copy()
         for col in financial_cols:
-            display_df[col] = display_df[col].apply(lambda x: f"R$ {x:,.2f}")
-        display_df['Avg_Transaction'] = display_df['Avg_Transaction'].apply(lambda x: f"R$ {x:,.2f}")
-        display_df['Profit_Margin'] = display_df['Profit_Margin'].apply(lambda x: f"{x:.1f}%")
-        
+            display_df[col] = display_df[col].apply(format_currency)
+        display_df['Media_Transacao'] = display_df['Media_Transacao'].apply(format_currency)
+        display_df['Margem_Lucro_Percentual'] = display_df['Margem_Lucro_Percentual'].apply(lambda x: f"{x:.1f}%")
+
         st.dataframe(display_df, use_container_width=True, height=400)
-        
-        # Visualizations
+
+        st.markdown("### 📈 Visualizações Comparativas")
         col1, col2 = st.columns(2)
-        
+
         with col1:
-            # Top performers
             top_10 = summary_df.head(10)
             fig_top = px.bar(
                 top_10,
                 x='Comissão',
                 y='AssessorReal',
                 orientation='h',
-                title='🏆 Top 10 Performers',
-                color='Profit_Margin',
-                color_continuous_scale='RdYlGn'
+                title='🏆 Top 10 Assessores por Comissão',
+                color='Margem_Lucro_Percentual',
+                color_continuous_scale=px.colors.sequential.RdYlGn,
+                labels={'Comissão': 'Comissão (R\$)', 'AssessorReal': 'Assessor', 'Margem_Lucro_Percentual': 'Margem de Lucro (%)'},
+                hover_name='AssessorReal'
             )
+            fig_top.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_top, use_container_width=True)
-        
+
         with col2:
-            # Scatter plot: Revenue vs Profit Margin
             fig_scatter = px.scatter(
                 summary_df,
                 x='Comissão',
-                y='Profit_Margin',
-                size='Transaction_Count',
-                hover_data=['AssessorReal'],
-                title='💰 Revenue vs Profit Margin',
-                labels={'Comissão': 'Revenue (R$)', 'Profit_Margin': 'Profit Margin (%)'}
+                y='Margem_Lucro_Percentual',
+                size='Total_Transacoes',
+                hover_data=['AssessorReal', 'Comissão', 'Margem_Lucro_Percentual', 'Total_Transacoes'],
+                title='💰 Comissão vs. Margem de Lucro',
+                labels={'Comissão': 'Comissão (R\$)', 'Margem_Lucro_Percentual': 'Margem de Lucro (%)', 'Total_Transacoes': 'Número de Transações'},
+                size_max=60
             )
             st.plotly_chart(fig_scatter, use_container_width=True)
-        
-        # Export options
-        st.markdown("### 📥 Export Options")
+
+        st.markdown("### 📥 Opções de Exportação")
         col1, col2 = st.columns(2)
-        
+
         with col1:
             csv_data = summary_df.to_csv(index=False).encode('utf-8')
             st.download_button(
-                "📊 Download Complete Summary (CSV)",
+                "📊 Baixar Resumo Completo (CSV)",
                 csv_data,
-                f"Macro_Summary_{'_'.join(map(str, selected_chaves))}.csv",
-                "text/csv"
+                f"Taurus_Macro_Summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                "text/csv",
+                help="Exporta todos os dados sumarizados dos assessores."
             )
-        
+
         with col2:
-            # Top performers only
-            top_performers = summary_df.head(20)
-            csv_top = top_performers.to_csv(index=False).encode('utf-8')
+            top_performers_export = summary_df.head(20)
+            csv_top = top_performers_export.to_csv(index=False).encode('utf-8')
             st.download_button(
-                "🏆 Download Top 20 Performers (CSV)",
+                "🏆 Baixar Top 20 Assessores (CSV)",
                 csv_top,
-                f"Top_Performers_{'_'.join(map(str, selected_chaves))}.csv",
-                "text/csv"
+                f"Taurus_Top_Performers_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                "text/csv",
+                help="Exporta apenas os 20 melhores assessores."
             )
+    else:
+        st.info("ℹ️ Por favor, selecione pelo menos um período de tempo para exibir a visão macro.")
 
 # --- ASSESSOR VIEW PAGE ---
 elif page == "👤 Assessor View":
-    st.markdown('<h1 class="main-header">👤 Individual Assessor Analysis</h1>', unsafe_allow_html=True)
-    
+    st.markdown('<h1 class="main-header">👤 Análise Individual do Assessor</h1>', unsafe_allow_html=True)
+
     if st.session_state["df_taurus"] is None:
-        st.warning("Please upload the Excel file first.")
+        st.warning("🚨 Por favor, carregue o arquivo Excel na página 'Upload' primeiro.")
         st.stop()
-    
+
     df = st.session_state["df_taurus"]
-    
-    # Filters
+
     col1, col2 = st.columns(2)
     with col1:
-        chave_list = sorted(df["Chave"].dropna().unique())
+        chave_list = sorted(df["Chave"].dropna().unique(), key=parse_chave_to_date)
         selected_chaves = st.multiselect(
-            "🕐 Select Time Periods",
+            "🕐 Selecione os Períodos de Tempo",
             chave_list,
-            default=chave_list
+            default=chave_list,
+            help="Escolha os meses/anos para analisar o assessor."
         )
-    
+
     with col2:
         assessor_list = sorted(df["AssessorReal"].dropna().unique())
-        selected_assessor = st.selectbox("👤 Select Assessor", assessor_list)
-    
+        selected_assessor = st.selectbox("👤 Selecione o Assessor", assessor_list,
+                                         help="Escolha um assessor para ver sua performance detalhada.")
+
     if selected_chaves and selected_assessor:
         df_filtered = df[
             (df["AssessorReal"] == selected_assessor) &
             (df["Chave"].isin(selected_chaves))
         ]
-        
-        if df_filtered.empty:
-            st.warning("No data found for the selected criteria.")
-        else:
-            # Individual KPIs
-            st.markdown(f"### 📊 Performance Overview: {selected_assessor}")
-            
-            col1, col2, col3, col4, col5 = st.columns(5)
 
-            total_revenue = df_filtered["Receita Bruta"].sum()
-            PagoTaurus = df_filtered["Comissão"].sum()
-            total_transactions = len(df_filtered)
-            total_pix = df_filtered["Pix_Assessor"].sum()
-            total_profit = df_filtered["Lucro_Empresa"].sum()
-            
-            with col1:
-                st.metric("Total Revenue", format_currency(total_revenue))
-            with col2:
-                st.metric("Comissão", format_currency(PagoTaurus))
-            with col3:
-                st.metric("Total Transactions", total_transactions)
-            with col4:
-                st.metric("Total Pix Assessor", format_currency(total_pix))
-            with col5:
-                st.metric("Generated Profit", format_currency(total_profit))
-            
-            # Performance over time
-            monthly_performance = df_filtered.groupby('Chave').agg({
-                'Comissão': 'sum',
-                'Lucro_Empresa': 'sum',
-                'Chave': 'count'
-            }).rename(columns={'Chave': 'Transaction_Count'})
-            monthly_performance = monthly_performance.reset_index() 
-           
-            # Category breakdown
-            financial_cols = ["Receita Bruta" , "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
-            category_summary = df_filtered.groupby("Categoria")[financial_cols].sum().reset_index()
-            
-            # Add transaction count per category
-            category_summary['Transaction_Count'] = df_filtered.groupby("Categoria").size().values
-            
-            st.markdown("### 📋 Performance by Category")
+        if df_filtered.empty:
+            st.warning("⚠️ Nenhum dado encontrado para os critérios selecionados. Tente ajustar os filtros.")
+        else:
+            st.markdown(f"### 📊 Performance de {selected_assessor}")
+
+            # Chamar a função de exibição de KPIs e obter os valores para exportação
+            total_revenue, total_commission, total_transactions, total_pix, total_profit, avg_transaction_assessor = display_kpis(df_filtered, is_assessor_view=True)
+
+            # Performance ao longo do tempo
+            st.markdown("### 📈 Desempenho Mensal")
+            monthly_performance = df_filtered.groupby('Chave').agg(
+                Comissão=('Comissão', 'sum'),
+                Lucro_Empresa=('Lucro_Empresa', 'sum'),
+                Transacoes=('Chave', 'count')
+            ).reset_index()
+            monthly_performance['Chave_Date'] = monthly_performance['Chave'].apply(parse_chave_to_date)
+            monthly_performance = monthly_performance.sort_values('Chave_Date')
+
+            fig_monthly_perf = make_subplots(specs=[[{"secondary_y": True}]])
+            fig_monthly_perf.add_trace(go.Bar(x=monthly_performance['Chave'], y=monthly_performance['Comissão'], name='Comissão (R\$)'), secondary_y=False)
+            fig_monthly_perf.add_trace(go.Scatter(x=monthly_performance['Chave'], y=monthly_performance['Transacoes'], name='Transações', mode='lines+markers'), secondary_y=True)
+            fig_monthly_perf.update_layout(title_text=f"Evolução Mensal de {selected_assessor}", hovermode="x unified")
+            fig_monthly_perf.update_xaxes(title_text="Período")
+            fig_monthly_perf.update_yaxes(title_text="Comissão (R\$)", secondary_y=False)
+            fig_monthly_perf.update_yaxes(title_text="Número de Transações", secondary_y=True)
+            st.plotly_chart(fig_monthly_perf, use_container_width=True)
+
+            # Detalhamento por categoria
+            st.markdown("### 📋 Performance por Categoria")
+            financial_cols_category = ["Receita Bruta", "Comissão", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"]
+            category_summary = df_filtered.groupby("Categoria")[financial_cols_category].sum().reset_index()
+            category_summary['Total_Transacoes'] = df_filtered.groupby("Categoria").size().values
             st.dataframe(category_summary.round(2), use_container_width=True)
-            
-            # Category visualization
+
+            # Visualização da distribuição por categoria
             fig_category = px.treemap(
                 category_summary,
                 path=['Categoria'],
                 values='Comissão',
-                title=f'🎯 {selected_assessor} - Revenue by Category',
+                title=f'🎯 {selected_assessor} - Comissão por Categoria',
                 color='Lucro_Empresa',
-                color_continuous_scale='RdYlGn'
+                color_continuous_scale=px.colors.sequential.RdYlGn,
+                hover_data=['Receita Bruta', 'Tributo_Retido', 'Pix_Assessor', 'Total_Transacoes']
             )
             st.plotly_chart(fig_category, use_container_width=True)
-            
-            # Download section
-            st.markdown("### 📥 Export Options")
+
+            st.markdown("### 📥 Opções de Exportação")
             col1, col2, col3 = st.columns(3)
-            
+
             with col1:
-                # Category summary
                 csv_summary = category_summary.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    "📊 Download Category Summary",
+                    "📊 Baixar Resumo por Categoria (CSV)",
                     csv_summary,
-                    f"{selected_assessor}_Category_Summary.csv",
-                    "text/csv"
+                    f"{selected_assessor}_Category_Summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    "text/csv",
+                    help="Exporta a performance do assessor por categoria."
                 )
-            
+
             with col2:
-                # Detailed transactions
+                # Exportar para Excel com múltiplas abas
                 detailed_cols = [
-                    "Data Receita", "Conta", "Cliente", "AssessorReal" , "Categoria", "Produto",
-                    "Comissão", "Receita Assessor", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa" , "Chave"
+                    "Chave", "Data Receita", "Conta", "Cliente", "AssessorReal", "Categoria", "Produto",
+                    "Comissão", "Receita Bruta", "Tributo_Retido", "Pix_Assessor", "Lucro_Empresa"
                 ]
                 available_cols = [col for col in detailed_cols if col in df_filtered.columns]
-                
+
                 if available_cols:
-                    from io import BytesIO
                     buffer = BytesIO()
-                    
                     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        df_filtered[available_cols].to_excel(writer, sheet_name='Taurus', index=False)
-                        category_summary.to_excel(writer, sheet_name='Category_Summary', index=False)
-                        monthly_performance.to_excel(writer, sheet_name='Monthly_Performance', index=False)
-                    
+                        df_filtered[available_cols].to_excel(writer, sheet_name='Transacoes_Detalhadas', index=False)
+                        category_summary.to_excel(writer, sheet_name='Resumo_Categorias', index=False)
+                        monthly_performance.to_excel(writer, sheet_name='Performance_Mensal', index=False)
+
                     st.download_button(
-                        "📋 Download Complete Report (Excel)",
+                        "📋 Baixar Relatório Completo (Excel)",
                         buffer.getvalue(),
-                        f"{selected_assessor}_Complete_Report.xlsx",
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        f"{selected_assessor}_Complete_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        help="Exporta transações, resumo por categoria e performance mensal."
                     )
-            
+                else:
+                    st.warning("⚠️ Algumas colunas detalhadas não estão disponíveis para exportação.")
+
             with col3:
-                # Performance summary
-                performance_summary = pd.DataFrame({
-                    'Metric': ['Total Revenue', 'Total Transactions', 'Avg Transaction', 'Total Profit'],
-                    'Value': [total_revenue, total_transactions, avg_transaction, total_profit]
+                # Correção: Usar o avg_transaction_assessor calculado
+                performance_summary_export = pd.DataFrame({
+                    'Métrica': ['Receita Bruta', 'Comissão Total', 'Total Transações', 'Média Transação', 'Pix Assessor', 'Lucro Gerado'],
+                    'Valor': [total_revenue, total_commission, total_transactions, avg_transaction_assessor, total_pix, total_profit]
                 })
-                csv_perf = performance_summary.to_csv(index=False).encode('utf-8')
+                csv_perf = performance_summary_export.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    "🎯 Download Performance Summary",
+                    "🎯 Baixar Resumo de Performance (CSV)",
                     csv_perf,
-                    f"{selected_assessor}_Performance_Summary.csv",
-                    "text/csv"
+                    f"{selected_assessor}_Performance_Summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    "text/csv",
+                    help="Exporta os principais KPIs do assessor."
                 )
 
 # --- PERFORMANCE ANALYTICS ---
 elif page == "📈 Performance Analytics":
-    st.markdown('<h1 class="main-header">📈 Advanced Performance Analytics</h1>', unsafe_allow_html=True)
-    
+    st.markdown('<h1 class="main-header">📈 Análises Avançadas de Performance</h1>', unsafe_allow_html=True)
+
     if st.session_state["df_taurus"] is None:
-        st.warning("Please upload the Excel file first.")
+        st.warning("🚨 Por favor, carregue o arquivo Excel na página 'Upload' primeiro.")
         st.stop()
-    
+
     df = st.session_state["df_taurus"]
-    
-    # Analytics options
+
     analysis_type = st.selectbox(
-        "📊 Select Analysis Type",
-        ["Trend Analysis", "Comparative Analysis", "Seasonal Analysis", "Growth Analysis"]
+        "📊 Selecione o Tipo de Análise",
+        ["Análise de Tendência", "Análise Comparativa", "Análise de Categoria"] # Removi "Seasonal Analysis" e "Growth Analysis" por não haver implementação no código original e manter o foco na melhoria do que existe.
     )
-    
-    if analysis_type == "Trend Analysis":
-        st.markdown("### 📈 Revenue and Profit Trends")
-        
-        # Time series analysis
-        monthly_data = df.groupby('Chave').agg({
-            'Comissão': 'sum',
-            'Lucro_Empresa': 'sum',
-            'Pix_Assessor': 'sum',
-            'AssessorReal': 'nunique'
-        }).reset_index()
-        
+
+    if analysis_type == "Análise de Tendência":
+        st.markdown("### 📈 Tendências de Comissão e Lucro ao Longo do Tempo")
+
+        monthly_data = df.groupby('Chave').agg(
+            Comissão=('Comissão', 'sum'),
+            Lucro_Empresa=('Lucro_Empresa', 'sum'),
+            Pix_Assessor=('Pix_Assessor', 'sum'),
+            Assessores_Ativos=('AssessorReal', 'nunique')
+        ).reset_index()
+
         monthly_data['Chave_Date'] = monthly_data['Chave'].apply(parse_chave_to_date)
         monthly_data = monthly_data.sort_values('Chave_Date')
-        
-        # Create subplot
+
         fig = make_subplots(
             rows=2, cols=2,
-            subplot_titles=('Revenue Trend', 'Profit Trend', 'Pix Assessor', 'Active Assessors'),
-            specs=[[{"secondary_y": False}, {"secondary_y": False}],
-                   [{"secondary_y": False}, {"secondary_y": False}]]
+            subplot_titles=('Evolução da Comissão', 'Evolução do Lucro', 'Pix para Assessores', 'Número de Assessores Ativos'),
+            vertical_spacing=0.15
         )
-        
-        # Revenue trend
-        fig.add_trace(
-            go.Scatter(x=monthly_data['Chave'], y=monthly_data['Comissão'], 
-                      mode='lines+markers', name='Revenue'),
-            row=1, col=1
-        )
-        
-        # Profit trend
-        fig.add_trace(
-            go.Scatter(x=monthly_data['Chave'], y=monthly_data['Lucro_Empresa'], 
-                      mode='lines+markers', name='Profit', line=dict(color='green')),
-            row=1, col=2
-        )
-        
-        # Pix trend
-        fig.add_trace(
-            go.Scatter(x=monthly_data['Chave'], y=monthly_data['Pix_Assessor'], 
-                      mode='lines+markers', name='Pix', line=dict(color='orange')),
-            row=2, col=1
-        )
-        
-        # Active assessors
-        fig.add_trace(
-            go.Scatter(x=monthly_data['Chave'], y=monthly_data['AssessorReal'], 
-                      mode='lines+markers', name='Assessors', line=dict(color='purple')),
-            row=2, col=2
-        )
-        
-        fig.update_layout(height=600, title_text="📊 Comprehensive Trend Analysis")
+
+        fig.add_trace(go.Scatter(x=monthly_data['Chave'], y=monthly_data['Comissão'],
+                                 mode='lines+markers', name='Comissão', line=dict(color='#1f77b4')), # Azul Taurus
+                      row=1, col=1)
+
+        fig.add_trace(go.Scatter(x=monthly_data['Chave'], y=monthly_data['Lucro_Empresa'],
+                                 mode='lines+markers', name='Lucro', line=dict(color='#2ca02c')), # Verde
+                      row=1, col=2)
+
+        fig.add_trace(go.Scatter(x=monthly_data['Chave'], y=monthly_data['Pix_Assessor'],
+                                 mode='lines+markers', name='Pix', line=dict(color='#ff7f0e')), # Laranja
+                      row=2, col=1)
+
+        fig.add_trace(go.Scatter(x=monthly_data['Chave'], y=monthly_data['Assessores_Ativos'],
+                                 mode='lines+markers', name='Assessores Ativos', line=dict(color='#9467bd')), # Roxo
+                      row=2, col=2)
+
+        fig.update_layout(height=700, title_text="📊 Análise Abrangente de Tendências", showlegend=False)
+        fig.update_xaxes(title_text="Período")
+        fig.update_yaxes(title_text="Valor (R\$)", row=1, col=1)
+        fig.update_yaxes(title_text="Valor (R\$)", row=1, col=2)
+        fig.update_yaxes(title_text="Valor (R\$)", row=2, col=1)
+        fig.update_yaxes(title_text="Contagem", row=2, col=2)
         st.plotly_chart(fig, use_container_width=True)
-    
-    elif analysis_type == "Comparative Analysis":
-        st.markdown("### 🔍 Assessor Comparison")
-        
-        # Top assessors selector
-        top_n = st.slider("Select top N assessors", 3, 20, 10)
-        
-        top_assessors = df.groupby('AssessorReal')['Comissão'].sum().nlargest(top_n).index
-        df_top = df[df['AssessorReal'].isin(top_assessors)]
-        
-        # Comparison metrics
-        comparison_data = df_top.groupby('AssessorReal').agg({
-            'Comissão': 'sum',
-            'Lucro_Empresa': 'sum',
-            'Pix_Assessor': 'sum',
-            'Chave': 'count'
-        }).rename(columns={'Chave': 'Transaction_Count'})
-        
-        comparison_data['Avg_Transaction'] = comparison_data['Comissão'] / comparison_data['Transaction_Count']
-        comparison_data['Profit_Margin'] = (comparison_data['Lucro_Empresa'] / comparison_data['Comissão']) * 100
-        
-        # Radar chart
+
+    elif analysis_type == "Análise Comparativa":
+        st.markdown("### 🔍 Comparativo de Performance de Assessores")
+
+        top_n = st.slider("Selecione o Top N Assessores para Comparação", 3, 20, 10,
+                          help="Número de assessores para incluir na comparação.")
+
+        top_assessors_names = df.groupby('AssessorReal')['Comissão'].sum().nlargest(top_n).index
+        df_top = df[df['AssessorReal'].isin(top_assessors_names)]
+
+        comparison_data = df_top.groupby('AssessorReal').agg(
+            Comissao_Total=('Comissão', 'sum'),
+            Lucro_Total=('Lucro_Empresa', 'sum'),
+            Pix_Total=('Pix_Assessor', 'sum'),
+            Total_Transacoes=('Chave', 'count')
+        ).reset_index()
+
+        comparison_data['Media_Transacao'] = comparison_data['Comissao_Total'] / comparison_data['Total_Transacoes']
+        comparison_data['Margem_Lucro_Percentual'] = (comparison_data['Lucro_Total'] / comparison_data['Comissao_Total']) * 100
+        comparison_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+        comparison_data.fillna(0, inplace=True)
+
+        st.dataframe(comparison_data.sort_values('Comissao_Total', ascending=False).round(2), use_container_width=True)
+
+        # Radar chart para os 5 melhores (para não sobrecarregar o gráfico)
+        st.markdown("### 🕸️ Comparação Detalhada (Top 5 Assessores)")
         fig_radar = go.Figure()
-        
-        for assessor in top_assessors[:5]:  # Show top 5 in radar
-            assessor_data = comparison_data.loc[assessor]
-            
-            # Normalize values for radar chart
-            metrics = ['Comissão', 'Lucro_Empresa', 'Pix_Assessor', 'Avg_Transaction', 'Profit_Margin']
-            normalized_values = []
-            
-            for metric in metrics:
-                max_val = comparison_data[metric].max()
-                normalized_values.append((assessor_data[metric] / max_val) * 100)
-            
-            fig_radar.add_trace(go.Scatterpolar(
-                r=normalized_values,
-                theta=metrics,
-                fill='toself',
-                name=assessor
-            ))
-        
-        fig_radar.update_layout(
-            polar=dict(
-                radialaxis=dict(
-                    visible=True,
-                    range=[0, 100]
-                )),
-            showlegend=True,
-            title="🎯 Top 5 Assessors Performance Comparison"
-        )
-        st.plotly_chart(fig_radar, use_container_width=True)
-    
+
+        # Seleciona apenas os 5 primeiros para o radar chart
+        top_5_for_radar = comparison_data.sort_values('Comissao_Total', ascending=False).head(5)
+
+        if not top_5_for_radar.empty:
+            metrics_for_radar = ['Comissao_Total', 'Lucro_Total', 'Pix_Total', 'Media_Transacao', 'Margem_Lucro_Percentual']
+            metrics_labels = ['Comissão Total', 'Lucro Total', 'Pix Total', 'Média Transação', 'Margem de Lucro (%)']
+
+            # Normalizar métricas para o radar chart (0 a 100)
+            normalized_df = pd.DataFrame()
+            for metric in metrics_for_radar:
+                max_val = top_5_for_radar[metric].max()
+                min_val = top_5_for_radar[metric].min()
+                if max_val == min_val: # Evitar divisão por zero se todos os valores forem iguais
+                    normalized_df[metric] = 50 # Valor médio
+                else:
+                    normalized_df[metric] = ((top_5_for_radar[metric] - min_val) / (max_val - min_val)) * 100
+
+            for i, row in top_5_for_radar.iterrows():
+                assessor = row['AssessorReal']
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=normalized_df.loc[i, metrics_for_radar].values,
+                    theta=metrics_labels,
+                    fill='toself',
+                    name=assessor,
+                    hoverinfo='text',
+                    text=[f"{label}: {row[original_metric]:.2f}" for label, original_metric in zip(metrics_labels, metrics_for_radar)]
+                ))
+
+            fig_radar.update_layout(
+                polar=dict(
+                    radialaxis=dict(
+                        visible=True,
+                        range=[0, 100]
+                    )),
+                showlegend=True,
+                title="🎯 Performance Comparativa Normalizada dos Assessores"
+            )
+            st.plotly_chart(fig_radar, use_container_width=True)
+        else:
+            st.info("ℹ️ Não há dados suficientes para gerar o gráfico de radar para os principais assessores.")
+
+    elif analysis_type == "Análise de Categoria":
+        st.markdown("### 📊 Análise Detalhada por Categoria")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            category_selection = st.selectbox("Selecione uma Categoria", df["Categoria"].dropna().unique(),
+                                              help="Escolha uma categoria para analisar sua performance ao longo do tempo.")
+
+        if category_selection:
+            df_category = df[df["Categoria"] == category_selection]
+
+            monthly_category_data = df_category.groupby('Chave').agg(
+                Comissão=('Comissão', 'sum'),
+                Lucro_Empresa=('Lucro_Empresa', 'sum'),
+                Total_Transacoes=('Chave', 'count')
+            ).reset_index()
+            monthly_category_data['Chave_Date'] = monthly_category_data['Chave'].apply(parse_chave_to_date)
+            monthly_category_data = monthly_category_data.sort_values('Chave_Date')
+
+            if not monthly_category_data.empty:
+                fig_category_trend = make_subplots(specs=[[{"secondary_y": True}]])
+                fig_category_trend.add_trace(go.Bar(x=monthly_category_data['Chave'], y=monthly_category_data['Comissão'], name='Comissão (R\$)', marker_color='#1f77b4'), secondary_y=False)
+                fig_category_trend.add_trace(go.Scatter(x=monthly_category_data['Chave'], y=monthly_category_data['Lucro_Empresa'], name='Lucro (R\$)', mode='lines+markers', line=dict(color='#2ca02c')), secondary_y=False)
+                fig_category_trend.add_trace(go.Scatter(x=monthly_category_data['Chave'], y=monthly_category_data['Total_Transacoes'], name='Transações', mode='lines', line=dict(color='#ff7f0e', dash='dot')), secondary_y=True)
+
+                fig_category_trend.update_layout(title_text=f"Tendência da Categoria: {category_selection}", hovermode="x unified")
+                fig_category_trend.update_xaxes(title_text="Período")
+                fig_category_trend.update_yaxes(title_text="Valor (R\$)", secondary_y=False)
+                fig_category_trend.update_yaxes(title_text="Número de Transações", secondary_y=True)
+                st.plotly_chart(fig_category_trend, use_container_width=True)
+            else:
+                st.info(f"ℹ️ Não há dados para a categoria '{category_selection}' nos períodos carregados.")
+
+            st.markdown("### 🏆 Top Assessores na Categoria")
+            top_assessors_in_category = df_category.groupby('AssessorReal')['Comissão'].sum().nlargest(10).reset_index()
+            if not top_assessors_in_category.empty:
+                fig_top_cat_assessors = px.bar(
+                    top_assessors_in_category,
+                    x='Comissão',
+                    y='AssessorReal',
+                    orientation='h',
+                    title=f'Top 10 Assessores em {category_selection}',
+                    labels={'Comissão': 'Comissão (R\$)', 'AssessorReal': 'Assessor'}
+                )
+                fig_top_cat_assessors.update_layout(yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_top_cat_assessors, use_container_width=True)
+            else:
+                st.info(f"ℹ️ Não há assessores com comissão para a categoria '{category_selection}'.")
