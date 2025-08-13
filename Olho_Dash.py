@@ -212,7 +212,7 @@ def load_data():
     """Load and preprocess the backtesting data"""
     try:
         # Load the CSV file with more explicit parameters
-        df_raw = pd.read_csv('Backtesting2_history.csv', 
+        df_raw = pd.read_csv('Backtest_LucroMedio.csv', 
                            encoding='utf-8',
                            low_memory=False)
         
