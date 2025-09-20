@@ -602,6 +602,82 @@ def main():
     perf_chart = create_performance_chart(df_filtered)
     st.plotly_chart(perf_chart, use_container_width=True)
     
+    # Daily PnL Export Section
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col2:
+        # Create daily aggregated data
+        daily_summary = df_filtered.groupby('Loop_Date').agg({
+            'Daily_PNL': 'sum',
+            'PNL': 'count',  # Number of trades executed per day
+            'Ativo': 'nunique',  # Number of unique assets traded
+            'Cumulative_Balance': 'last'  # Final balance of the day
+        }).reset_index()
+        
+        daily_summary.columns = ['Date', 'Daily_PNL', 'Trades_Executed', 'Assets_Traded', 'Cumulative_Balance']
+        daily_summary['Cumulative_PNL'] = daily_summary['Daily_PNL'].cumsum()
+        
+        # Add additional metrics
+        daily_summary['Winning_Days'] = (daily_summary['Daily_PNL'] > 0).astype(int)
+        daily_summary['Return_Pct'] = (daily_summary['Daily_PNL'] / 50000) * 100
+        
+        # Export daily summary
+        daily_excel_data = export_to_excel(daily_summary)
+        st.download_button(
+            label="📥 Download Daily PnL",
+            data=daily_excel_data,
+            file_name=f"daily_pnl_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            help="Download Excel file with daily aggregated PnL data"
+        )
+    
+    with col3:
+        # Show daily summary stats
+        st.metric(
+            label="📅 Trading Days",
+            value=f"{len(daily_summary):,}",
+            help="Total number of days with executed trades"
+        )
+    
+    # Preview of daily data
+    with st.expander("👁️ Preview Daily PnL Data", expanded=False):
+        st.markdown("**Sample of daily aggregated data that will be exported:**")
+        
+        # Format the preview dataframe
+        preview_df = daily_summary.head(10).copy()
+        preview_df['Date'] = preview_df['Date'].dt.strftime('%Y-%m-%d')
+        preview_df['Daily_PNL'] = preview_df['Daily_PNL'].apply(lambda x: f"${x:,.2f}")
+        preview_df['Cumulative_PNL'] = preview_df['Cumulative_PNL'].apply(lambda x: f"${x:,.2f}")
+        preview_df['Cumulative_Balance'] = preview_df['Cumulative_Balance'].apply(lambda x: f"${x:,.2f}")
+        preview_df['Return_Pct'] = preview_df['Return_Pct'].apply(lambda x: f"{x:+.3f}%")
+        
+        st.dataframe(
+            preview_df,
+            use_container_width=True,
+            height=300
+        )
+        
+        # Summary statistics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            winning_days = daily_summary['Winning_Days'].sum()
+            total_days = len(daily_summary)
+            win_rate_days = (winning_days / total_days) * 100 if total_days > 0 else 0
+            st.metric("🟢 Winning Days", f"{winning_days}", f"{win_rate_days:.1f}%")
+        
+        with col2:
+            losing_days = total_days - winning_days
+            st.metric("🔴 Losing Days", f"{losing_days}")
+        
+        with col3:
+            avg_trades_per_day = daily_summary['Trades_Executed'].mean()
+            st.metric("📊 Avg Trades/Day", f"{avg_trades_per_day:.1f}")
+        
+        with col4:
+            best_day = daily_summary['Daily_PNL'].max()
+            st.metric("🏆 Best Day", f"${best_day:,.2f}")
+    
     # Drawdown chart
     drawdown_chart = create_drawdown_chart(df_filtered, drawdown_series)
     st.plotly_chart(drawdown_chart, use_container_width=True)
