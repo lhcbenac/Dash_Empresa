@@ -859,8 +859,8 @@ elif page == "👤 Assessor View":
             st.metric("Total Transactions", f"{total_transactions:,}")
         with col4:
             create_metric_card("Total Pix Assessor", total_pix)
-        with col5:
-            create_metric_card("Generated Profit", "XXXX")
+        """with col5:
+            create_metric_card("Generated Profit", total_profit)"""
         
         # Performance trends
         st.markdown('<div class="section-header">📈 Performance Trends</div>', unsafe_allow_html=True)
