@@ -860,7 +860,7 @@ elif page == "👤 Assessor View":
         with col4:
             create_metric_card("Total Pix Assessor", total_pix)
         with col5:
-            create_metric_card("Generated Profit", total_profit)
+            create_metric_card("Generated Profit", "XXXX")
         
         # Performance trends
         st.markdown('<div class="section-header">📈 Performance Trends</div>', unsafe_allow_html=True)
