@@ -1030,21 +1030,27 @@ elif page == "👤 Assessor View":
             buffer = BytesIO()
             
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                # Main data
-                detailed_cols = [
-                    "Chave", "Categoria", "Comissão", "Tributo_Retido", 
-                    "Pix_Assessor", "Lucro_Empresa"
+                
+                # --- MODIFICATION START ---
+                # Define the exact columns requested by the user
+                report_columns_requested = [
+                    "Data Receita", "Conta", "Cliente", "Produto", "Ativo", 
+                    "Receita Bruta", "Receita Líquida", "Comissão", 
+                    "Tributo_Retido", "Repasse", "Pix_Assessor"
                 ]
-                available_cols = [col for col in detailed_cols if col in df_filtered.columns]
                 
-                if "Data Receita" in df_filtered.columns:
-                    available_cols.insert(0, "Data Receita")
-                if "Cliente" in df_filtered.columns:
-                    available_cols.append("Cliente")
-                if "Produto" in df_filtered.columns:
-                    available_cols.append("Produto")
+                # Filter this list to include only columns that actually exist in the dataframe
+                report_cols_available = [col for col in report_columns_requested if col in df_filtered.columns]
                 
-                df_filtered[available_cols].to_excel(writer, sheet_name='Transactions', index=False)
+                # Create the 'Transactions' sheet with only the available requested columns
+                if report_cols_available:
+                    df_filtered[report_cols_available].to_excel(writer, sheet_name='Transactions', index=False)
+                else:
+                    # If no columns match, create a sheet with a message
+                    pd.DataFrame({"Message": ["None of the requested columns were found in the data."]}).to_excel(writer, sheet_name='Transactions', index=False)
+                # --- MODIFICATION END ---
+
+                # Add the other sheets as before
                 category_summary.to_excel(writer, sheet_name='Category_Summary', index=False)
                 monthly_performance.to_excel(writer, sheet_name='Monthly_Performance', index=False)
                 
