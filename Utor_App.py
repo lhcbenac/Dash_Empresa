@@ -542,12 +542,12 @@ elif page == "👤 Assessor View":
                     total_pix = safe_operation(lambda: df_filtered["Pix_Assessor"].sum(), default=0)
                     st.metric("💳 Pix Assessor", format_currency(total_pix))
                 
-                with highlight_col4:
+                """with highlight_col4:
                     if "Lucro_Empresa" in df_filtered.columns:
                         total_profit = safe_operation(lambda: df_filtered["Lucro_Empresa"].sum(), default=0)
                         st.metric("📊 Profit", "XX,XX")
                     else:
-                        st.metric("📊 Profit", "N/A")
+                        st.metric("📊 Profit", "N/A") """
                 
                 # Main pivot table
                 st.markdown("### 📋 Detailed Breakdown")
@@ -846,5 +846,6 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
+
 
 
