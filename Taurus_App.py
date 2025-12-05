@@ -840,7 +840,7 @@ elif page == "👤 Assessor View":
             st.stop()
         
         # Individual KPIs
-        st.markdown(f'<div class="section-header">📊 {selected_chaves} | Relatório Gerencial | TAURUS : {selected_assessor}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="section-header">📊 Relatório Gerencial | TAURUS : {selected_assessor} | NOVEMBRO </div>', unsafe_allow_html=True)
         
         col1, col2, col3, col4, col5 = st.columns(5)
 
