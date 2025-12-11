@@ -79,6 +79,7 @@ def validate_dataframe(df: pd.DataFrame, required_cols: set, sheet_name: str = "
         if df is None or df.empty:
             return False, f"Sheet '{sheet_name}' is empty"
         
+        # Check columns (handling potential whitespace issues handled in main loop)
         missing_cols = required_cols - set(df.columns)
         if missing_cols:
             return False, f"Sheet '{sheet_name}' missing columns: {', '.join(missing_cols)}"
@@ -203,6 +204,10 @@ if page == "📤 Upload":
                         logger.info(f"Processing sheet: {sheet}")
                         df = pd.read_excel(xls, sheet_name=sheet)
                         
+                        # --- FIX: Clean column names to remove spaces ---
+                        # This fixes issues where "Conta" is actually "Conta " or " Conta"
+                        df.columns = df.columns.astype(str).str.strip()
+                        
                         # Validate sheet
                         is_valid, error_msg = validate_dataframe(df, required_cols, sheet)
                         if not is_valid:
@@ -214,7 +219,7 @@ if page == "📤 Upload":
                         # Handle column selection
                         available_cols = ["Chave", "AssessorReal", "Pix_Assessor"]
                         
-                        # IMPORTANT: Added "Conta" and "Ativo" here so they are read from Excel
+                        # --- IMPORTANT: Ensure "Conta" is in this list ---
                         optional_cols = [
                             "Cliente", 
                             "Comissão", 
@@ -223,7 +228,8 @@ if page == "📤 Upload":
                             "Lucro_Empresa", 
                             "Chave_Interna", 
                             "Ativo", 
-                            "Conta"
+                            "Conta", 
+                            "Data Receita" # Added this too just in case
                         ]
                         
                         for col in optional_cols:
@@ -232,7 +238,7 @@ if page == "📤 Upload":
                         
                         df = df[available_cols].copy()
                         
-                        # Rename logic (keeping this just in case for calculations)
+                        # Rename logic
                         if "Valor Liquido" in df.columns:
                             df = df.rename(columns={"Valor Liquido": "VALOR_LIQUIDO_IR"})
 
@@ -273,7 +279,7 @@ if page == "📤 Upload":
                 st.session_state["skipped_sheets"] = skipped_sheets
                 
                 # Success message with file info
-                st.success("✅ Data successfully loaded!")
+                st.success("✅ Data successfully loaded! (Columns cleaned and refreshed)")
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -651,7 +657,10 @@ elif page == "👤 Assessor View":
                     
                     with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
                         # Only export selected columns
-                        df_filtered[final_export_cols].to_excel(writer, sheet_name='Raw_Data', index=False)
+                        if final_export_cols:
+                            df_filtered[final_export_cols].to_excel(writer, sheet_name='Raw_Data', index=False)
+                        else:
+                            df_filtered.to_excel(writer, sheet_name='Raw_Data', index=False)
                         
                         pivot_df.round(2).to_excel(writer, sheet_name='Summary_Table', index=False)
                         sheet_totals_with_total.to_excel(writer, sheet_name='Distribuidor_Totals', index=False)
@@ -702,6 +711,9 @@ elif page == "💰 Profit Analysis":
                 for sheet in all_sheets:
                     try:
                         df = pd.read_excel(xls, sheet_name=sheet)
+                        # --- FIX: Clean column names ---
+                        df.columns = df.columns.astype(str).str.strip()
+                        
                         if {"Chave", "Lucro_Empresa"}.issubset(df.columns):
                             temp = df[["Chave", "Lucro_Empresa"]].copy()
                             # Convert to numeric
@@ -846,7 +858,7 @@ elif page == "💰 Profit Analysis":
 # --- SIDEBAR INFO ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📊 Dashboard Info")
-st.sidebar.markdown("**Version:** 2.3 (Custom Columns)")
+st.sidebar.markdown("**Version:** 2.4 (Whitespace Fix)")
 st.sidebar.markdown("**Features:**")
 st.sidebar.markdown("- 📈 Advanced Analytics")
 st.sidebar.markdown("- 🎯 Key Highlights")
