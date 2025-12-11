@@ -211,10 +211,20 @@ if page == "📤 Upload":
                             progress_bar.progress((i + 1) / len(all_sheets))
                             continue
                         
-                        # Handle column selection - ADDED "Ativo" HERE
+                        # Handle column selection
                         available_cols = ["Chave", "AssessorReal", "Pix_Assessor"]
-                        # Added "Ativo" to optional columns
-                        optional_cols = ["Cliente", "Comissão", "Imposto", "Valor Liquido", "Lucro_Empresa", "Chave_Interna", "Ativo"]
+                        
+                        # IMPORTANT: Added "Conta" and "Ativo" here so they are read from Excel
+                        optional_cols = [
+                            "Cliente", 
+                            "Comissão", 
+                            "Imposto", 
+                            "Valor Liquido", 
+                            "Lucro_Empresa", 
+                            "Chave_Interna", 
+                            "Ativo", 
+                            "Conta"
+                        ]
                         
                         for col in optional_cols:
                             if col in df.columns:
@@ -222,11 +232,11 @@ if page == "📤 Upload":
                         
                         df = df[available_cols].copy()
                         
-                        # RENAME COLUMN LOGIC
+                        # Rename logic (keeping this just in case for calculations)
                         if "Valor Liquido" in df.columns:
                             df = df.rename(columns={"Valor Liquido": "VALOR_LIQUIDO_IR"})
 
-                        # Convert numeric columns - UPDATED to use new name
+                        # Convert numeric columns
                         numeric_cols = ["Pix_Assessor", "Comissão", "Imposto", "VALOR_LIQUIDO_IR", "Lucro_Empresa"]
                         for col in numeric_cols:
                             if col in df.columns:
@@ -620,39 +630,29 @@ elif page == "👤 Assessor View":
                 # Export section
                 st.markdown("### 📥 Export Options")
                 
-                # --- UPDATED INFO MESSAGE ---
-                # "Ativo" will now be included because it was added to the dataframe in the Upload section
-                if "Cliente" in df_filtered.columns:
-                    st.success("✅ 'Cliente' column found and will be included in exports!")
-                else:
-                    st.warning("⚠️ 'Cliente' column not found in the data.")
+                # Check for columns and inform user
+                missing_req_cols = []
+                requested_cols = ["AssessorReal", "Chave", "Conta", "Cliente", "Ativo", "Pix_Assessor"]
+                for c in requested_cols:
+                    if c not in df_filtered.columns:
+                        missing_req_cols.append(c)
                 
-                # Showing user that Ativo and VALOR_LIQUIDO_IR are included
-                export_info = f"Export will include: {', '.join(df_filtered.columns)}"
+                if missing_req_cols:
+                    st.warning(f"⚠️ Warning: The following columns were requested but are missing from data: {', '.join(missing_req_cols)}")
+                
+                export_info = f"Export will contain: {', '.join([c for c in requested_cols if c in df_filtered.columns])}"
                 st.info(export_info)
-
+                
                 try:
                     excel_buffer = BytesIO()
                     
-                    # 1. DEFINE YOUR COLUMNS HERE
-                    desired_columns = [
-                        "Conta",
-                        "Chave", 
-                        "AssessorReal", 
-                        "Pix_Assessor", 
-                        "Ativo", 
-                        "VALOR_LIQUIDO_IR",
-                        "Cliente"
-                    ]
+                    # --- CUSTOM COLUMN SELECTION LOGIC ---
+                    final_export_cols = [col for col in requested_cols if col in df_filtered.columns]
                     
-                    # 2. Check which of these columns actually exist to avoid errors
-                    final_export_cols = [col for col in desired_columns if col in df_filtered.columns]
-
                     with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                        # 3. Export ONLY the selected columns
+                        # Only export selected columns
                         df_filtered[final_export_cols].to_excel(writer, sheet_name='Raw_Data', index=False)
                         
-                        # Keep the other sheets as they were
                         pivot_df.round(2).to_excel(writer, sheet_name='Summary_Table', index=False)
                         sheet_totals_with_total.to_excel(writer, sheet_name='Distribuidor_Totals', index=False)
                     
@@ -846,7 +846,7 @@ elif page == "💰 Profit Analysis":
 # --- SIDEBAR INFO ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📊 Dashboard Info")
-st.sidebar.markdown("**Version:** 2.2 (Renamed Columns)")
+st.sidebar.markdown("**Version:** 2.3 (Custom Columns)")
 st.sidebar.markdown("**Features:**")
 st.sidebar.markdown("- 📈 Advanced Analytics")
 st.sidebar.markdown("- 🎯 Key Highlights")
@@ -865,4 +865,3 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
-
