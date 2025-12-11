@@ -481,7 +481,7 @@ elif page == "📊 Macro View":
 
 # --- ASSESSOR VIEW PAGE ---
 elif page == "👤 Assessor View":
-    st.markdown('<div class="main-header"><h1>👤 Relatório Gerencial - UTOR PJ2 - NOVEMBRO | {assessor_list}</h1></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="main-header"><h1>👤 Relatório Gerencial - UTOR PJ2 - NOVEMBRO | {assessor_list}</h1></div>', unsafe_allow_html=True)
     
     if st.session_state["df_all"] is None:
         st.warning("Please upload the Excel file in the Upload section.")
@@ -841,6 +841,7 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
+
 
 
 
