@@ -481,7 +481,7 @@ elif page == "📊 Macro View":
 
 # --- ASSESSOR VIEW PAGE ---
 elif page == "👤 Assessor View":
-    st.markdown(f'<div class="main-header"><h1>👤 Relatório Gerencial - UTOR PJ2</h1></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="main-header"><h1>👤 Assessor View - UTOR PJ2 </h1></div>', unsafe_allow_html=True)
     
     if st.session_state["df_all"] is None:
         st.warning("Please upload the Excel file in the Upload section.")
@@ -520,7 +520,7 @@ elif page == "👤 Assessor View":
         else:
             try:
                 # Key Highlights Section
-                st.markdown(f"### 🎯  Relatório Gerencial - UTOR PJ2 | {selected_assessor}")
+                st.markdown(f"### 🎯  Relatório Gerencial - UTOR PJ2 - NOVEMBRO | {selected_assessor}")
                 
                 highlight_col1, highlight_col2, highlight_col3, highlight_col4 = st.columns(4)
                 
@@ -841,6 +841,7 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
+
 
 
 
