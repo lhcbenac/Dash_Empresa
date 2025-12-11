@@ -211,9 +211,10 @@ if page == "📤 Upload":
                             progress_bar.progress((i + 1) / len(all_sheets))
                             continue
                         
-                        # Handle column selection
+                        # Handle column selection - ADDED "Ativo" HERE
                         available_cols = ["Chave", "AssessorReal", "Pix_Assessor"]
-                        optional_cols = ["Cliente", "Comissão", "Imposto", "Valor Liquido", "Lucro_Empresa", "Chave_Interna"]
+                        # Added "Ativo" to optional columns
+                        optional_cols = ["Cliente", "Comissão", "Imposto", "Valor Liquido", "Lucro_Empresa", "Chave_Interna", "Ativo"]
                         
                         for col in optional_cols:
                             if col in df.columns:
@@ -221,8 +222,12 @@ if page == "📤 Upload":
                         
                         df = df[available_cols].copy()
                         
-                        # Convert numeric columns
-                        numeric_cols = ["Pix_Assessor", "Comissão", "Imposto", "Valor Liquido", "Lucro_Empresa"]
+                        # RENAME COLUMN LOGIC
+                        if "Valor Liquido" in df.columns:
+                            df = df.rename(columns={"Valor Liquido": "VALOR_LIQUIDO_IR"})
+
+                        # Convert numeric columns - UPDATED to use new name
+                        numeric_cols = ["Pix_Assessor", "Comissão", "Imposto", "VALOR_LIQUIDO_IR", "Lucro_Empresa"]
                         for col in numeric_cols:
                             if col in df.columns:
                                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -542,7 +547,6 @@ elif page == "👤 Assessor View":
                     total_pix = safe_operation(lambda: df_filtered["Pix_Assessor"].sum(), default=0)
                     st.metric("💳 Pix Assessor", format_currency(total_pix))
                 
-
                 
                 # Main pivot table
                 st.markdown("### 📋 Detailed Breakdown")
@@ -616,13 +620,15 @@ elif page == "👤 Assessor View":
                 # Export section
                 st.markdown("### 📥 Export Options")
                 
+                # --- UPDATED INFO MESSAGE ---
+                # "Ativo" will now be included because it was added to the dataframe in the Upload section
                 if "Cliente" in df_filtered.columns:
                     st.success("✅ 'Cliente' column found and will be included in exports!")
-                    export_info = f"Export will include: {', '.join(df_filtered.columns)}"
                 else:
                     st.warning("⚠️ 'Cliente' column not found in the data.")
-                    export_info = f"Export will include: {', '.join(df_filtered.columns)}"
                 
+                # Showing user that Ativo and VALOR_LIQUIDO_IR are included
+                export_info = f"Export will include: {', '.join(df_filtered.columns)}"
                 st.info(export_info)
                 
                 try:
@@ -822,7 +828,7 @@ elif page == "💰 Profit Analysis":
 # --- SIDEBAR INFO ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📊 Dashboard Info")
-st.sidebar.markdown("**Version:** 2.1 (Enhanced)")
+st.sidebar.markdown("**Version:** 2.2 (Renamed Columns)")
 st.sidebar.markdown("**Features:**")
 st.sidebar.markdown("- 📈 Advanced Analytics")
 st.sidebar.markdown("- 🎯 Key Highlights")
@@ -841,11 +847,3 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
-
-
-
-
-
-
-
-
