@@ -630,11 +630,29 @@ elif page == "👤 Assessor View":
                 # Showing user that Ativo and VALOR_LIQUIDO_IR are included
                 export_info = f"Export will include: {', '.join(df_filtered.columns)}"
                 st.info(export_info)
-                
+
                 try:
                     excel_buffer = BytesIO()
+                    
+                    # 1. DEFINE YOUR COLUMNS HERE
+                    desired_columns = [
+                        "Conta",
+                        "Chave", 
+                        "AssessorReal", 
+                        "Pix_Assessor", 
+                        "Ativo", 
+                        "VALOR_LIQUIDO_IR",
+                        "Cliente"
+                    ]
+                    
+                    # 2. Check which of these columns actually exist to avoid errors
+                    final_export_cols = [col for col in desired_columns if col in df_filtered.columns]
+
                     with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                        df_filtered.to_excel(writer, sheet_name='Raw_Data', index=False)
+                        # 3. Export ONLY the selected columns
+                        df_filtered[final_export_cols].to_excel(writer, sheet_name='Raw_Data', index=False)
+                        
+                        # Keep the other sheets as they were
                         pivot_df.round(2).to_excel(writer, sheet_name='Summary_Table', index=False)
                         sheet_totals_with_total.to_excel(writer, sheet_name='Distribuidor_Totals', index=False)
                     
@@ -847,3 +865,4 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
+
