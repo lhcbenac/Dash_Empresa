@@ -641,7 +641,7 @@ elif page == "👤 Assessor View":
                 
                 # Check for columns and inform user
                 missing_req_cols = []
-                requested_cols = ["AssessorReal", "Chave", "Conta", "Cliente", "Ativo", "Pix_Assessor"]
+                requested_cols = ["AssessorReal", "Chave", "Conta", "Cliente", "Ativo", "Pix_Assessor", "Distribuidor"]
                 
                 # Because we standardized the data in Upload, this list should ideally be empty now
                 for c in requested_cols:
@@ -883,3 +883,4 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
+
