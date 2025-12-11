@@ -651,6 +651,7 @@ elif page == "👤 Assessor View":
                     "Ativo", 
                     "Categoria",    # <--- ADDED
                     "Tipo Receita", # <--- ADDED
+                    "Comissão",
                     "Pix_Assessor", 
                     "Distribuidor"
                 ]
@@ -895,3 +896,4 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
+
