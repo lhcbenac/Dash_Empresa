@@ -220,16 +220,16 @@ if page == "📤 Upload":
                             continue
                         
                         # --- FIX 3: Enforce Standard Structure (The "Cookie Cutter") ---
-                        # We explicitly define the columns we WANT.
-                        # If a sheet doesn't have it, we create it and fill it with None.
-                        
+                        # UPDATED: Added "Categoria" and "Tipo Receita" to this list
                         target_columns = [
                             "Chave", 
                             "AssessorReal", 
                             "Pix_Assessor",
                             "Cliente", 
-                            "Conta",          # <--- Will be created if missing
-                            "Ativo",          # <--- Will be created if missing
+                            "Conta",          
+                            "Ativo",
+                            "Categoria",      # <--- ADDED
+                            "Tipo Receita",   # <--- ADDED
                             "VALOR_LIQUIDO_IR",
                             "Comissão", 
                             "Imposto", 
@@ -641,7 +641,19 @@ elif page == "👤 Assessor View":
                 
                 # Check for columns and inform user
                 missing_req_cols = []
-                requested_cols = ["AssessorReal", "Chave", "Conta", "Cliente", "Categoria" , "Tipo Receita" ,"Ativo", "Comissão" , "Pix_Assessor", "Distribuidor"]
+                
+                # --- UPDATED COLUMN LIST ---
+                requested_cols = [
+                    "AssessorReal", 
+                    "Chave", 
+                    "Conta", 
+                    "Cliente", 
+                    "Ativo", 
+                    "Categoria",    # <--- ADDED
+                    "Tipo Receita", # <--- ADDED
+                    "Pix_Assessor", 
+                    "Distribuidor"
+                ]
                 
                 # Because we standardized the data in Upload, this list should ideally be empty now
                 for c in requested_cols:
@@ -864,7 +876,7 @@ elif page == "💰 Profit Analysis":
 # --- SIDEBAR INFO ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📊 Dashboard Info")
-st.sidebar.markdown("**Version:** 2.5 (Column Standardization)")
+st.sidebar.markdown("**Version:** 2.7 (More Columns)")
 st.sidebar.markdown("**Features:**")
 st.sidebar.markdown("- 📈 Advanced Analytics")
 st.sidebar.markdown("- 🎯 Key Highlights")
@@ -883,5 +895,3 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
-
-
