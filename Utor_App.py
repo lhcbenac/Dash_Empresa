@@ -204,9 +204,12 @@ if page == "📤 Upload":
                         logger.info(f"Processing sheet: {sheet}")
                         df = pd.read_excel(xls, sheet_name=sheet)
                         
-                        # --- FIX: Clean column names to remove spaces ---
-                        # This fixes issues where "Conta" is actually "Conta " or " Conta"
+                        # --- FIX 1: Clean column names to remove spaces ---
                         df.columns = df.columns.astype(str).str.strip()
+                        
+                        # --- FIX 2: Rename 'Valor Liquido' immediately ---
+                        if "Valor Liquido" in df.columns:
+                            df = df.rename(columns={"Valor Liquido": "VALOR_LIQUIDO_IR"})
                         
                         # Validate sheet
                         is_valid, error_msg = validate_dataframe(df, required_cols, sheet)
@@ -216,31 +219,31 @@ if page == "📤 Upload":
                             progress_bar.progress((i + 1) / len(all_sheets))
                             continue
                         
-                        # Handle column selection
-                        available_cols = ["Chave", "AssessorReal", "Pix_Assessor"]
+                        # --- FIX 3: Enforce Standard Structure (The "Cookie Cutter") ---
+                        # We explicitly define the columns we WANT.
+                        # If a sheet doesn't have it, we create it and fill it with None.
                         
-                        # --- IMPORTANT: Ensure "Conta" is in this list ---
-                        optional_cols = [
+                        target_columns = [
+                            "Chave", 
+                            "AssessorReal", 
+                            "Pix_Assessor",
                             "Cliente", 
+                            "Conta",          # <--- Will be created if missing
+                            "Ativo",          # <--- Will be created if missing
+                            "VALOR_LIQUIDO_IR",
                             "Comissão", 
                             "Imposto", 
-                            "Valor Liquido", 
                             "Lucro_Empresa", 
                             "Chave_Interna", 
-                            "Ativo", 
-                            "Conta", 
-                            "Data Receita" # Added this too just in case
+                            "Data Receita"
                         ]
                         
-                        for col in optional_cols:
-                            if col in df.columns:
-                                available_cols.append(col)
+                        for col in target_columns:
+                            if col not in df.columns:
+                                df[col] = None # Fill missing columns with None/NaN
                         
-                        df = df[available_cols].copy()
-                        
-                        # Rename logic
-                        if "Valor Liquido" in df.columns:
-                            df = df.rename(columns={"Valor Liquido": "VALOR_LIQUIDO_IR"})
+                        # Select exactly the target columns
+                        df = df[target_columns].copy()
 
                         # Convert numeric columns
                         numeric_cols = ["Pix_Assessor", "Comissão", "Imposto", "VALOR_LIQUIDO_IR", "Lucro_Empresa"]
@@ -279,7 +282,7 @@ if page == "📤 Upload":
                 st.session_state["skipped_sheets"] = skipped_sheets
                 
                 # Success message with file info
-                st.success("✅ Data successfully loaded! (Columns cleaned and refreshed)")
+                st.success("✅ Data successfully loaded! (Sheets Standardized)")
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -639,6 +642,8 @@ elif page == "👤 Assessor View":
                 # Check for columns and inform user
                 missing_req_cols = []
                 requested_cols = ["AssessorReal", "Chave", "Conta", "Cliente", "Ativo", "Pix_Assessor"]
+                
+                # Because we standardized the data in Upload, this list should ideally be empty now
                 for c in requested_cols:
                     if c not in df_filtered.columns:
                         missing_req_cols.append(c)
@@ -653,6 +658,7 @@ elif page == "👤 Assessor View":
                     excel_buffer = BytesIO()
                     
                     # --- CUSTOM COLUMN SELECTION LOGIC ---
+                    # Now that we guarantee the columns exist (even if empty), we can safely request them
                     final_export_cols = [col for col in requested_cols if col in df_filtered.columns]
                     
                     with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
@@ -858,7 +864,7 @@ elif page == "💰 Profit Analysis":
 # --- SIDEBAR INFO ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📊 Dashboard Info")
-st.sidebar.markdown("**Version:** 2.4 (Whitespace Fix)")
+st.sidebar.markdown("**Version:** 2.5 (Column Standardization)")
 st.sidebar.markdown("**Features:**")
 st.sidebar.markdown("- 📈 Advanced Analytics")
 st.sidebar.markdown("- 🎯 Key Highlights")
