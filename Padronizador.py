@@ -23,15 +23,14 @@ COLS_UTOR = [
 
 def format_dataframe(df, target_columns):
     """
-    1. Renames common variations (optional helper).
+    1. Renames common variations.
     2. Creates missing columns as empty.
     3. Returns only the requested columns in the exact order.
     """
-    # Simple cleanup to remove whitespace from headers
+    # Clean header whitespace
     df.columns = df.columns.astype(str).str.strip()
     
-    # Optional: Map common variations if they exist in your raw file
-    # This helps if your raw file has "Valor Liquido" but you need "VALOR_LIQUIDO_IR"
+    # Map common variations
     rename_map = {
         "Valor Liquido": "VALOR_LIQUIDO_IR", 
         "Tipo Receita": "Tipo_Receita"
@@ -41,14 +40,18 @@ def format_dataframe(df, target_columns):
     # Add missing columns
     for col in target_columns:
         if col not in df.columns:
-            df[col] = None  # Leave blank/empty
+            df[col] = None
             
-    # Select exact columns in order
+    # Return exact columns
     return df[target_columns]
 
 def convert_df_to_csv(df):
-    """Converts dataframe to CSV UTF-8 bytes."""
-    return df.to_csv(index=False).encode('utf-8')
+    """
+    Converts dataframe to CSV.
+    Uses 'utf-8-sig' which is the best UTF-8 version for Excel 
+    (it includes the BOM so special characters like 'ç' and 'ã' show correctly).
+    """
+    return df.to_csv(index=False).encode('utf-8-sig')
 
 # --- Sidebar ---
 st.sidebar.title("Select Tool")
@@ -63,24 +66,31 @@ if page == "Taurus Converter":
     uploaded_file = st.file_uploader("Upload Taurus Excel", type=["xlsx", "xls"])
     
     if uploaded_file:
-        # Read Data
-        df = pd.read_excel(uploaded_file)
-        
-        # Format Data
-        df_clean = format_dataframe(df, COLS_TAURUS)
-        
-        # Show Preview
-        st.write(f"Processed {len(df_clean)} rows.")
-        st.dataframe(df_clean.head())
-        
-        # Download Button
-        csv = convert_df_to_csv(df_clean)
-        st.download_button(
-            label="Download Taurus CSV",
-            data=csv,
-            file_name="Taurus_Standardized.csv",
-            mime="text/csv",
-        )
+        try:
+            # Read Data
+            df = pd.read_excel(uploaded_file)
+            
+            # Format Data
+            df_clean = format_dataframe(df, COLS_TAURUS)
+            
+            # Sort by Chave
+            if "Chave" in df_clean.columns:
+                df_clean = df_clean.sort_values(by="Chave")
+            
+            # Show Preview
+            st.success(f"Processed {len(df_clean)} rows.")
+            st.dataframe(df_clean.head())
+            
+            # Download Button
+            csv = convert_df_to_csv(df_clean)
+            st.download_button(
+                label="Download Taurus CSV",
+                data=csv,
+                file_name="Taurus_Output.csv",
+                mime="text/csv",
+            )
+        except Exception as e:
+            st.error(f"Error processing file: {e}")
 
 # ==========================================
 # PAGE 2: UTOR
@@ -92,42 +102,49 @@ elif page == "Utor Converter":
     uploaded_file = st.file_uploader("Upload Utor Excel", type=["xlsx", "xls"])
     
     if uploaded_file:
-        # Read all sheets at once
-        xls = pd.read_excel(uploaded_file, sheet_name=None)
-        
-        all_data = []
-        processed_sheets = []
-        
-        for sheet_name, df_sheet in xls.items():
-            # Clean header whitespace
-            df_sheet.columns = df_sheet.columns.astype(str).str.strip()
+        try:
+            # Read all sheets
+            xls = pd.read_excel(uploaded_file, sheet_name=None)
             
-            # CHECK CRITERIA: Must have Cliente and Pix_Assessor
-            if 'Cliente' in df_sheet.columns and 'Pix_Assessor' in df_sheet.columns:
-                
-                # 1. Add Distribuidor Column
-                df_sheet['Distribuidor'] = sheet_name
-                
-                # 2. Format columns (add missing ones like Categoria, etc)
-                df_sheet_clean = format_dataframe(df_sheet, COLS_UTOR)
-                
-                all_data.append(df_sheet_clean)
-                processed_sheets.append(sheet_name)
-        
-        if all_data:
-            # Merge all valid sheets
-            final_df = pd.concat(all_data, ignore_index=True)
+            all_data = []
+            processed_sheets = []
             
-            st.success(f"Merged {len(processed_sheets)} sheets: {', '.join(processed_sheets)}")
-            st.dataframe(final_df.head())
+            for sheet_name, df_sheet in xls.items():
+                # Clean headers
+                df_sheet.columns = df_sheet.columns.astype(str).str.strip()
+                
+                # CHECK CRITERIA
+                if 'Cliente' in df_sheet.columns and 'Pix_Assessor' in df_sheet.columns:
+                    
+                    # 1. Add Distribuidor
+                    df_sheet['Distribuidor'] = sheet_name
+                    
+                    # 2. Format columns
+                    df_sheet_clean = format_dataframe(df_sheet, COLS_UTOR)
+                    
+                    all_data.append(df_sheet_clean)
+                    processed_sheets.append(sheet_name)
             
-            # Download Button
-            csv = convert_df_to_csv(final_df)
-            st.download_button(
-                label="Download Utor CSV",
-                data=csv,
-                file_name="Utor_Consolidated.csv",
-                mime="text/csv",
-            )
-        else:
-            st.error("No sheets found containing both 'Cliente' and 'Pix_Assessor' columns.")
+            if all_data:
+                # Merge
+                final_df = pd.concat(all_data, ignore_index=True)
+                
+                # Sort by Chave
+                if "Chave" in final_df.columns:
+                    final_df = final_df.sort_values(by="Chave")
+                
+                st.success(f"Merged {len(processed_sheets)} sheets: {', '.join(processed_sheets)}")
+                st.dataframe(final_df.head())
+                
+                # Download Button
+                csv = convert_df_to_csv(final_df)
+                st.download_button(
+                    label="Download Utor CSV",
+                    data=csv,
+                    file_name="Utor_Output.csv",
+                    mime="text/csv",
+                )
+            else:
+                st.error("No sheets found containing both 'Cliente' and 'Pix_Assessor' columns.")
+        except Exception as e:
+            st.error(f"Error processing file: {e}")
