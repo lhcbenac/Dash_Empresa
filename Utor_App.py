@@ -475,25 +475,53 @@ elif page == "📊 Macro View":
                         logger.error(f"Error creating margin chart: {str(e)}")
             
             # Export options
+
             st.markdown("### 📥 Export Options")
-            try:
-                excel_buffer = BytesIO()
-                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                    df_filtered.to_excel(writer, sheet_name='Raw_Data', index=False)
-                    pivot_df.round(2).to_excel(writer, sheet_name='Summary_Table', index=False)
-                
-                excel_buffer.seek(0)
-                
-                filename_excel = f"Macro_Analysis_{'_'.join(map(str, selected_chaves))}.xlsx"
-                st.download_button(
-                    label="📊 Download Excel Report",
-                    data=excel_buffer.getvalue(),
-                    file_name=filename_excel,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            except Exception as e:
-                logger.error(f"Error creating export: {str(e)}")
-                st.error(f"❌ Error creating export file: {str(e)}")
+            
+            # Create two columns to place buttons side-by-side
+            ex_col1, ex_col2 = st.columns(2)
+
+            # --- EXCEL BUTTON (Column 1) ---
+            with ex_col1:
+                try:
+                    excel_buffer = BytesIO()
+                    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                        df_filtered.to_excel(writer, sheet_name='Raw_Data', index=False)
+                        pivot_df.round(2).to_excel(writer, sheet_name='Summary_Table', index=False)
+                    
+                    excel_buffer.seek(0)
+                    
+                    filename_excel = f"Macro_Analysis_{'_'.join(map(str, selected_chaves))}.xlsx"
+                    st.download_button(
+                        label="📊 Download Excel Report",
+                        data=excel_buffer.getvalue(),
+                        file_name=filename_excel,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                except Exception as e:
+                    logger.error(f"Error creating excel export: {str(e)}")
+                    st.error(f"❌ Error creating Excel file: {str(e)}")
+
+            # --- CSV BUTTON (Column 2) ---
+            with ex_col2:
+                try:
+                    # Convert to CSV
+                    # Defaults for to_csv are US format (sep=',' and decimal='.')
+                    # .encode('utf-8') ensures the correct encoding
+                    csv_data = df_filtered.to_csv(index=False).encode('utf-8')
+                    
+                    filename_csv = f"Macro_Analysis_{'_'.join(map(str, selected_chaves))}.csv"
+                    
+                    st.download_button(
+                        label="📄 Download CSV Report",
+                        data=csv_data,
+                        file_name=filename_csv,
+                        mime="text/csv"
+                    )
+                except Exception as e:
+                    logger.error(f"Error creating csv export: {str(e)}")
+                    st.error(f"❌ Error creating CSV file: {str(e)}")
+
         else:
             st.warning("Please select at least one Chave period.")
     
@@ -896,4 +924,5 @@ if st.session_state["df_all"] is not None:
     except Exception as e:
         logger.error(f"Error displaying sidebar info: {str(e)}")
         st.sidebar.warning("Error loading data info")
+
 
