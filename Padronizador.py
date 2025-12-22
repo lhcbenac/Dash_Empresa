@@ -9,7 +9,7 @@ st.set_page_config(page_title="Data Converter", layout="wide")
 COLS_TAURUS = [
     "Data_Receita", "Conta", "Cliente", "Codigo_Assessor", "Assessor_Principal",
     "Categoria", "Produto", "Ativo", "Codigo_CNPJ", "Tipo_Receita",
-    "Receita_Bruta", "Receita_Liquida", "Comissao", "Chave", "Chave_Interna",
+    "Receita_Bruta", "Receita_Liquida", "Comissão", "Chave", "Chave_Interna",
     "AssessorReal", "Exc_Cliente", "Exc_Mes", "Standard", "Repasse",
     "Imposto_Retido", "Receita_Assessor", "Tributo_Retido", "Pix_Assessor",
     "Lucro_Empresa"
@@ -17,8 +17,8 @@ COLS_TAURUS = [
 
 COLS_UTOR = [
     "Chave", "AssessorReal", "Pix_Assessor", "Cliente", "Conta",
-    "Ativo", "Categoria", "Tipo_Receita", "VALOR_LIQUIDO_IR", "Comissao",
-    "Imposto", "Lucro_Empresa", "Chave_Interna", "Data_Receita", "Distribuidor"
+    "Ativo", "Categoria", "Tipo_Receita", "VALOR_LIQUIDO_IR", "Comissão",
+    "Imposto", "Lucro_Empresa", "Chave_Interna", "Data Receita", "Distribuidor"
 ]
 
 def format_dataframe(df, target_columns):
